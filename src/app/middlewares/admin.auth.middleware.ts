@@ -4,12 +4,12 @@ import config from '../../config';
 import jwtHelpers from '../../helpers/jwtHelpers';
 import { ForbiddenError, UnauthorizedError } from '../errors/request/apiError';
 
-import User from '../modules/user/user.model';
+import Admin from '../modules/admin/admin.model';
 
-const authMiddleware = (...requiredRoles: string[]) => {
+const adminAuthMiddleware = (...requiredRoles: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-
+      
       const token = req.headers.authorization?.replace('Bearer ', '') || '';
 
       // checking if the token is missing
@@ -22,37 +22,38 @@ const authMiddleware = (...requiredRoles: string[]) => {
 
       const { id, iat } = decoded;
 
-      // checking if the user is exist
-      const user = await User.findById(id).select('-password');
+      // checking if the admin is exist
+      const admin = await Admin.findById(id).select('-password');
 
-      if (!user) {
-        throw new UnauthorizedError('User not exists!');
+      if (!admin) {
+        throw new UnauthorizedError('admin not exists!');
       }
 
-     
-
-      if (user.isDeleted) {
+      if (admin.isDeleted) {
         throw new UnauthorizedError('Unauthorized Access');
       }
 
-      if (!user.isEmailVerified) {
+      if (!admin.isEmailVerified) {
         throw new UnauthorizedError('Unauthorized Access');
       }
 
-      if (user.passwordChangedAt && user.isJWTIssuedBeforePasswordChanged(iat)) {
+      if (admin.passwordChangedAt && admin.isJWTIssuedBeforePasswordChanged(iat)) {
         throw new UnauthorizedError('Password changed, please login again');
       }
 
-      if (!user.isActive) {
+      if (!admin.isActive) {
         throw new UnauthorizedError('Unauthorized Access');
       }
-      
+ 
+      if(!['super-admin', 'admin'].includes(admin.role)){
+         throw new ForbiddenError('You have no access to this route, Forbidden!');
+      }
 
-      if (requiredRoles.length && !requiredRoles.includes(user.currentRole)) {
+      if (requiredRoles.length && !requiredRoles.includes(admin.role)) {
         throw new ForbiddenError('You have no access to this route, Forbidden!');
       }
 
-      req.user = user;
+      req.admin = admin;
 
       next();
     } catch (error) {
@@ -69,4 +70,4 @@ const authMiddleware = (...requiredRoles: string[]) => {
   };
 };
 
-export default authMiddleware;
+export default adminAuthMiddleware;

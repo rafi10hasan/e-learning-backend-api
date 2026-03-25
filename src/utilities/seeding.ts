@@ -1,23 +1,22 @@
-import { USER_ROLE } from '../app/modules/user-module/user.constant';
-import User from '../app/modules/user-module/user.model';
+
+import { USER_ROLE } from '../app/modules/user/user.constant';
+import User from '../app/modules/user/user.model';
 import config from '../config';
 import { randomUserImage } from './randomUserImage';
 
 const adminData = {
   fullName: 'ADMIN',
   role: USER_ROLE.SUPER_ADMIN,
-  email: config.admin_email,
+  email: "rafayet12837@gmail.com", //config.gmail_app_user,
   password: config.admin_password,
-  profileImage: randomUserImage(),
+  avatar: randomUserImage(),
   isEmailVerified: true,
-  isActive: true,
 };
 
 const seedingAdmin = async () => {
   try {
     const admin = await User.findOne({
-      role: USER_ROLE.SUPER_ADMIN,
-      email: config.admin_email,
+      email: config.gmail_app_user,
     });
     if (!admin) {
       await User.create(adminData);

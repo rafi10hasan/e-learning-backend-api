@@ -1,4 +1,4 @@
-import nodemailer, { SendMailOptions } from 'nodemailer';
+import nodemailer, { SendMailOptions} from 'nodemailer';
 
 import { BadRequestError } from '../app/errors/request/apiError';
 import config from '../config';
@@ -29,15 +29,22 @@ const sendMail = async ({ from, to, subject, html }: MailOptions): Promise<boole
       html,
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    setImmediate(async () => {
+      try {
+        await transporter.sendMail(mailOptions);
+        console.log(`Email sent to ${to}`);
+      } catch (err) {
+        console.error(`Email failed for ${to}:`, err);
+        // optionally, retry once after a delay
+        setTimeout(async () => await transporter.sendMail(mailOptions), 5000);
+      }
+    });
 
-    // STRICT validation
-    if (!info.messageId || info.accepted.length === 0) {
-      throw new Error('Email Server Error! Failed to send mail!');
-    }
+    // Wait for the sendMail operation to complete
+    // const info: SentMessageInfo = await transporter.sendMail(mailOptions);
     return true;
-  } catch (error: any) {
-    throw new BadRequestError(error);
+  } catch (error) {
+    throw new BadRequestError('Failed to send mail!');
   }
 };
 

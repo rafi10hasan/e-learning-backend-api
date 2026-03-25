@@ -15,8 +15,6 @@ import routers from './app/routers';
 import { compressionOptions } from './config/compression.config';
 import { helmetConfig } from './config/helmet.config';
 import rootDesign from './helpers/rootDesign';
-import { stripeWebhookHandler } from './webhook/stripe.webhook';
-import { multerErrorHandler } from './app/middlewares/multer.error.handler';
 
 const app: Application = express();
 
@@ -52,12 +50,6 @@ app.use(
     ],
   }),
 );
-
-app.post(
-  '/webhook',
-  express.raw({ type: 'application/json' }),
-  stripeWebhookHandler
-);
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -68,13 +60,13 @@ if (config.node_env !== 'test') {
 
 app.use(cookieParser());
 app.use(compression(compressionOptions));
-// app.use(helmetConfig);
-// app.use('/v1/uploads', express.static(path.join('uploads')));
+app.use(helmetConfig);
+app.use('/v1/uploads', express.static(path.join('uploads')));
 app.use(applyRateLimit());
 
 // application middleware
 app.use('/api', routers);
-app.use(multerErrorHandler)
+
 // send html design with a button 'click to see server health' and integrate an api to check server health
 app.get('/', rootDesign);
 

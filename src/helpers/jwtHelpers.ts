@@ -1,8 +1,10 @@
+import crypto from 'crypto';
 import jwt, { JwtPayload, Secret } from 'jsonwebtoken';
 import { BadRequestError } from '../app/errors/request/apiError';
 
-import { SessionModel } from '../app/modules/session-module/session.model';
 import config from '../config';
+import { SessionModel } from '../app/modules/session/session.model';
+
 
 // verify jwt token
 const verifyToken = (token: string, secret: Secret): JwtPayload => {
@@ -28,11 +30,11 @@ const generateTokens = async (payload: JwtPayload) => {
 
   await SessionModel.findOneAndUpdate(
     { user: payload.id },
-    { refreshToken: refreshToken, expiresAt: decoded.exp * 1000, lastLoginAt: new Date() },
+    { refreshToken: refreshToken, expiresAt: decoded.exp * 1000, sessionId: payload.sessionId, lastLoginAt: new Date()},
     { upsert: true, new: true },
   );
 
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, sessionId:payload.sessionId };
 };
 
 const jwtHelpers = {
@@ -41,6 +43,7 @@ const jwtHelpers = {
 };
 
 export default jwtHelpers;
+
 
 /*
 

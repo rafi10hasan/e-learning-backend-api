@@ -8,31 +8,21 @@ const storage = multer.memoryStorage();
 // Per-field max size (bytes)
 export const MAX_FILE_SIZES: Record<string, number> = {
   profile_image: 1 * 1024 * 1024,
-  profile_gallery: 1 * 1024 * 1024,
-  listing_images: 2 * 1024 * 1024,
-  listing_thumbnail: 2 * 1024 * 1024,
-  blog_image: 1 * 1024 * 1024,
-  category_image: 1 * 1024 * 1024,
-  photo_id: 2 * 1024 * 1024,
-  passport: 2 * 1024 * 1024,
-  driving_license: 2 * 1024 * 1024,
+  car_images: 2 * 1024 * 1024,
+  verification_image: 2 * 1024 * 1024,
+  chat_images: 1 * 1024 * 1024,
 };
 
 export const MAX_FILE_COUNTS: Record<string, number> = {
   profile_image: 1,
-  profile_gallery: 5,
-  listing_thumbnail: 5,
-  listing_images: 5,
-  blog_image: 1,
-  category_image: 1,
-  photo_id: 1,
-  passport: 1,
-  driving_license: 1,
+  car_images: 5,
+  verification_image:1,
+  chat_images: 3
 };
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: any) => {
   const allowedFieldnames = Object.keys(MAX_FILE_SIZES);
-
+  console.log(file)
   // Field validation
   if (!allowedFieldnames.includes(file.fieldname)) {
     return cb(new Error(`Invalid fieldname: ${file.fieldname}`));
@@ -59,12 +49,7 @@ export const uploadFile = () =>
     fileFilter,
   }).fields([
     { name: 'profile_image', maxCount: 1 },
-    { name: 'profile_gallery', maxCount: 5 },
-    { name: 'listing_thumbnail', maxCount: 5 },
-    { name: 'listing_images', maxCount: 5 },
-    { name: 'blog_image', maxCount: 1 },
-    { name: 'category_image', maxCount: 1 },
-    { name: 'photo_id', maxCount: 1 },
-    { name: 'passport', maxCount: 1 },
-    { name: 'driving_license', maxCount: 1 },
+    { name: 'car_images', maxCount: 5 },
+    { name: 'verification_image', maxCount: 1 },
+    { name: 'chat_images', maxCount: 3 },
   ]);
