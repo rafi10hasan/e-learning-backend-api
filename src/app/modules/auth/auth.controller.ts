@@ -7,7 +7,7 @@ import { userAuthService } from './auth.service';
 // login
 const loginWithCredential = asyncHandler(async (req: Request, res: Response) => {
   const result = await userAuthService.loginWithCredential(req.body);
-  const isVerificationRequired = result.status === 'UNVERIFIED';
+  const isVerificationRequired = 'status' in result && result.status === 'UNVERIFIED';
   sendResponse(res, {
     statusCode: isVerificationRequired ? StatusCodes.BAD_REQUEST : StatusCodes.OK,
     success: isVerificationRequired ? false :true,

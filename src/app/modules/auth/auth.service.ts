@@ -19,7 +19,7 @@ const googleClient = new OAuth2Client();
 
 // login with credential
 const loginWithCredential = async (credential: TLoginPayload) => {
-  const { email, password, fcmToken } = credential;
+  const { email, password} = credential;
 
   const user = await userRepository.findByEmail(email);
   if (!user) throw new UnauthorizedError('user not found with this email');

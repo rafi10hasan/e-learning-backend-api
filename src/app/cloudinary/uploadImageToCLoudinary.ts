@@ -1,9 +1,9 @@
-import cloudinary from "../../config/cloudinary.config";
 import streamifier from 'streamifier';
+import cloudinary from "../../config/cloudinary.config";
 
 export const uploadToCloudinary = (
   file: Express.Multer.File,
-  folderName: 'profile_images' | 'car_images' | 'kyc_images' | 'chat_images',
+  folderName: 'profile_images' | 'question_images' | 'option_images',
 ): Promise<{ secure_url: string; public_id: string }> => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -13,7 +13,7 @@ export const uploadToCloudinary = (
         quality: 'auto',
         fetch_format: 'auto',
         transformation: [{ quality: 'auto' }],
-        max_file_size: 5 * 1024 * 1024, 
+        max_file_size: 5 * 1024 * 1024,
       },
       (error, result) => {
         if (error || !result) {
