@@ -3,10 +3,11 @@ import { StatusCodes } from "http-status-codes";
 import asyncHandler from "../../../shared/asynchandler";
 import sendResponse from "../../../shared/sendResponse";
 import { questionService } from "./question.service";
+import { QuestionFiles } from "./question.interface";
 
 
 const createQuestion = asyncHandler(async (req: Request, res: Response) => {
-    const result = await questionService.createQuestion(req.body);
+    const result = await questionService.createQuestion(req.body, req.files as QuestionFiles);
     sendResponse(res, {
         statusCode: StatusCodes.CREATED,
         success: true,

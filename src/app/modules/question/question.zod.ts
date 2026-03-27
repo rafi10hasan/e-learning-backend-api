@@ -1,7 +1,7 @@
 import { z } from "zod";
- 
+
 // ─── Passage ──────────────────────────────────────────────────
- 
+
 const createPassageSchema = z.object({
   passage_code: z.string({ message: "Passage code is required" }).min(1, {
     message: "Passage code cannot be empty",
@@ -22,7 +22,7 @@ const createPassageSchema = z.object({
     .max(new Date().getFullYear(), { message: "Year cannot be in the future" }),
   subject_id: z.string({ message: "Subject ID must be a string" }).optional(),
 });
- 
+
 const updatePassageSchema = z.object({
   passage_code: z.string({ message: "Passage code must be a string" }).min(1, {
     message: "Passage code cannot be empty",
@@ -44,18 +44,19 @@ const updatePassageSchema = z.object({
     .optional(),
   subject_id: z.string({ message: "Subject ID must be a string" }).optional(),
 });
- 
+
 // ─── Question ─────────────────────────────────────────────────
- 
+
 const optionSchema = z.object({
   text: z.string({ message: "Option text is required" }).min(1, {
     message: "Option text cannot be empty",
   }),
-  image_url: z
+  imageUrl: z
     .url({ message: "Invalid image URL" })
     .optional(),
 });
- 
+
+// create question schema
 const createQuestionSchema = z
   .object({
     examType: z.enum(["semi_matura", "matura", "provime"], {
@@ -78,7 +79,7 @@ const createQuestionSchema = z
     }),
     access: z.enum(["free", "premium"], {
       message: "Access must be free or premium",
-    }).default("free"),
+    }),
     questionText: z.string({ message: "Question text is required" }).min(1, {
       message: "Question text cannot be empty",
     }),
@@ -88,7 +89,7 @@ const createQuestionSchema = z
     options: z
       .array(optionSchema, { message: "Options must be an array" })
       .min(2, { message: "At least 2 options are required" })
-      .max(6, { message: "Maximum 6 options allowed" }),
+      .max(4, { message: "Maximum 4 options allowed" }),
     correctOptionIndex: z
       .number({ message: "Correct option index is required" })
       .int({ message: "Correct option index must be an integer" })
@@ -101,8 +102,31 @@ const createQuestionSchema = z
   .refine((data) => data.correctOptionIndex < data.options.length, {
     message: "correctOptionIndex is out of range",
     path: ["correctOptionIndex"],
+  }).superRefine((data, ctx) => {
+    if (data.examType === "provime") {
+      if (!data.facultyId) {
+        ctx.addIssue({
+          code: 'custom',
+          maximum: 1,
+          origin: 'superRefine',
+          inclusive: true,
+          path: ['error'],
+          message: "Faculty ID is required when exam type is provime",
+        });
+      }
+      if (!data.departmentId) {
+        ctx.addIssue({
+          code: 'custom',
+          maximum: 1,
+          origin: 'superRefine',
+          inclusive: true,
+          path: ['error'],
+          message: "Department ID is required when exam type is provime",
+        });
+      }
+    }
   });
- 
+
 const updateQuestionSchema = z
   .object({
     examType: z.enum(["semi_matura", "matura", "provime"], {
@@ -136,7 +160,7 @@ const updateQuestionSchema = z
     options: z
       .array(optionSchema, { message: "Options must be an array" })
       .min(2, { message: "At least 2 options are required" })
-      .max(6, { message: "Maximum 6 options allowed" })
+      .max(4, { message: "Maximum 4 options allowed" })
       .optional(),
     correctOptionIndex: z
       .number({ message: "Correct option index must be a number" })
@@ -160,9 +184,9 @@ const updateQuestionSchema = z
       path: ["correctOptionIndex"],
     }
   );
- 
 
-  
+
+
 export type TCreateQuestionPayload = z.infer<
   typeof createQuestionSchema
 >;

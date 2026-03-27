@@ -16,7 +16,7 @@ const adminData = {
 const seedingAdmin = async () => {
   try {
     const admin = await User.findOne({
-      email: config.gmail_app_user,
+      email: adminData.email,
     });
     if (!admin) {
       await User.create(adminData);

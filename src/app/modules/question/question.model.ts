@@ -1,6 +1,7 @@
 import mongoose, { Schema } from "mongoose";
-import { ACCESS_TYPES, EXAM_TYPES, QUERSTION_STATUS, SOURCE_TYPES, TEST_TYPES } from "./question.constant";
+import { QUERSTION_STATUS, SOURCE_TYPES,} from "./question.constant";
 import { IOption, IQuestion } from "./question.interface";
+import { ACCESS_TYPES, EXAM_TYPES, TEST_TYPES } from "../../../interfaces";
 
 
 

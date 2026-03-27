@@ -40,6 +40,7 @@
     "nodemailer": "^7.0.3",
     "pm2": "^6.0.6",
     "save": "^2.9.0",
+    "slugify": "^1.6.8",
     "socket.io": "^4.8.1",
     "streamifier": "^0.1.1",
     "stripe": "^18.1.1",

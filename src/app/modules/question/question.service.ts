@@ -4,7 +4,6 @@ import { IOption, IQuestion, QuestionFiles } from "./question.interface";
 import Question from "./question.model";
 import { TCreateQuestionPayload } from "./question.zod";
 
-
 const OPTION_KEYS = ["a", "b", "c", "d"] as const;
 
 const createQuestion = async (
@@ -30,10 +29,10 @@ const createQuestion = async (
 
     // duplicate check — same question text + exam_type + year
     const duplicate = await Question.findOne({
-        question_text: payload.questionText.trim(),
-        exam_type: payload.examType,
+        questionText: payload.questionText.trim(),
+        examType: payload.examType,
         year: payload.year,
-        is_active: true,
+        isActive: true,
     });
     if (duplicate) {
         throw new BadRequestError(
@@ -68,8 +67,8 @@ const createQuestion = async (
 
     const question = await Question.create({
         ...payload,
-        question_text: payload.questionText.trim(),
-        question_image_url: questionImageUrl,
+        questionText: payload.questionText.trim(),
+        questionImageUrl: questionImageUrl,
         options: finalOptions,
     });
 

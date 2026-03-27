@@ -1,12 +1,12 @@
 import { Types } from "mongoose";
-import { TAccessTypes, TExamTypes, TQuestionStatus, TSources, TTestTypes } from "./question.constant";
+import { TAccessTypes, TExamTypes, TTestTypes } from "../../../interfaces";
+import { TQuestionStatus, TSources } from "./question.constant";
 
 
 export interface IOption {
     text: string;
     imageUrl?: string;
 }
-
 
 export interface QuestionFiles {
     question_image?: Express.Multer.File[];
