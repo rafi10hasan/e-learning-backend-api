@@ -35,16 +35,16 @@ const getTemplateById = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
-const generateQuiz = asyncHandler(async (req: Request, res: Response) => {
-  const userId = req.user?._id.toString()!;
-  const result = await quizTemplateService.generateQuiz(req.params.id, userId);
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: "Quiz generated successfully.",
-    data: result,
-  });
-});
+// const generateQuiz = asyncHandler(async (req: Request, res: Response) => {
+//   const userId = req.user?._id.toString()!;
+//   const result = await quizTemplateService.generateQuiz(req.params.id, userId);
+//   sendResponse(res, {
+//     statusCode: StatusCodes.OK,
+//     success: true,
+//     message: "Quiz generated successfully.",
+//     data: result,
+//   });
+// });
 
 const publishTemplate = asyncHandler(async (req: Request, res: Response) => {
   const result = await quizTemplateService.publishTemplate(req.params.id);
@@ -79,7 +79,7 @@ export const quizTemplateController = {
   createQuizTemplate,
   getAllTemplates,
   getTemplateById,
-  generateQuiz,
+  // generateQuiz,
   publishTemplate,
   updateTemplate,
   deleteTemplate,

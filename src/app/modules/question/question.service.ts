@@ -1,25 +1,43 @@
+import { filterQuestions, QuestionFilterInput } from "../../../helpers/questionFilter";
+import { EXAM_TYPES } from "../../../interfaces";
 import { uploadToCloudinary } from "../../cloudinary/uploadImageToCLoudinary";
 import { BadRequestError } from "../../errors/request/apiError";
+import Faculty from "../faculty/faculty.model";
+import Subject from "../subject/subject.model";
 import { IOption, IQuestion, QuestionFiles } from "./question.interface";
 import Question from "./question.model";
 import { TCreateQuestionPayload } from "./question.zod";
 
 const OPTION_KEYS = ["a", "b", "c", "d"] as const;
 
+// create question
 const createQuestion = async (
     payload: TCreateQuestionPayload,
     files?: QuestionFiles
 ): Promise<IQuestion> => {
-    // parse options if it came as JSON string from multipart
-    let options: IOption[] = payload.options;
-    if (typeof payload.options === "string") {
-        try {
-            options = JSON.parse(payload.options as unknown as string);
-        } catch {
-            throw new BadRequestError("options must be a valid JSON array");
+
+    if (payload.examType && (payload.examType === EXAM_TYPES.MATURE || payload.examType === EXAM_TYPES.SEMIMATURE)) {
+        const isExistSubject = await Subject.findById(payload.subjectId).select("_id");
+
+        if (!isExistSubject) {
+            throw new BadRequestError("Subject not found");
         }
     }
 
+    if (payload.examType && (payload.examType === EXAM_TYPES.ENTRANCE_EXAM)) {
+        const isExistFaculty = await Faculty.findById(payload.facultyId).select("_id");
+
+        if (!isExistFaculty) {
+            throw new BadRequestError("Faculty not found");
+        }
+        const isExistDepartment = await Faculty.findById(payload.departmentId).select("_id");
+
+        if (!isExistDepartment) {
+            throw new BadRequestError("Department not found");
+        }
+    }
+
+    let options: IOption[] = payload.options;
     if (!options || options.length < 2) {
         throw new BadRequestError("At least 2 options are required");
     }
@@ -73,6 +91,80 @@ const createQuestion = async (
     });
 
     return question;
+};
+
+// fetch question
+const fetchQuestions = async (
+    input: QuestionFilterInput & { page?: number; limit?: number }
+) => {
+    const { page = 1, limit = 20, ...rest } = input;
+    const query = await filterQuestions(rest);
+    const skip = (page - 1) * limit;
+
+    const pipeline: any[] = [
+        { $match: query },
+
+        // Subject Join
+        {
+            $lookup: {
+                from: "subjects",
+                localField: "subjectId",
+                foreignField: "_id",
+                as: "subject"
+            }
+        },
+        { $unwind: { path: "$subject", preserveNullAndEmptyArrays: true } },
+
+        // Passage Join
+        {
+            $lookup: {
+                from: "passages",
+                localField: "passageId",
+                foreignField: "_id",
+                as: "passage"
+            }
+        },
+        { $unwind: { path: "$passage", preserveNullAndEmptyArrays: true } },
+
+        { $sort: { createdAt: -1 } },
+
+        // রেসপন্স ফরম্যাট করা (কোনো Nested Data থাকবে না)
+        {
+            $facet: {
+                data: [
+                    { $skip: skip },
+                    { $limit: limit },
+                    {
+                        $project: {
+                            _id: 0,
+                            questionId: "$_id",
+                            questionText: 1,
+                            subjectName: { $ifNull: ["$subject.name", null] },
+                            passageTitle: { $ifNull: ["$passage.title", null] }, // প্যাসেজ না থাকলে null
+                            status: 1,
+                            year: 1,
+                        }
+                    }
+                ],
+                totalCount: [{ $count: "count" }]
+            }
+        }
+    ];
+
+    const result = await Question.aggregate(pipeline);
+
+    const questions = result[0].data;
+    const total = result[0].totalCount[0]?.count || 0;
+
+    return {
+        questions,
+        meta: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        },
+    };
 };
 
 // const getAllQuestions = async (filter: GetQuestionsFilter) => {
@@ -159,6 +251,7 @@ const createQuestion = async (
 
 export const questionService = {
     createQuestion,
+    fetchQuestions
     // getAllQuestions,
     // getQuestionById,
     // updateQuestion,

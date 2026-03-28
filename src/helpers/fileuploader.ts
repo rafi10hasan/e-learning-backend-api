@@ -10,14 +10,24 @@ export const MAX_FILE_SIZES: Record<string, number> = {
   profile_image: 1 * 1024 * 1024,
   car_images: 2 * 1024 * 1024,
   verification_image: 2 * 1024 * 1024,
+  question_image: 2 * 1024 * 1024,
+  option_a_image: 1 * 1024 * 1024,
+  option_b_image: 1 * 1024 * 1024,
+  option_c_image: 1 * 1024 * 1024,
+  option_d_image: 1 * 1024 * 1024,
   chat_images: 1 * 1024 * 1024,
 };
 
 export const MAX_FILE_COUNTS: Record<string, number> = {
   profile_image: 1,
   car_images: 5,
-  verification_image:1,
-  chat_images: 3
+  verification_image: 1,
+  chat_images: 3,
+  question_image: 1,
+  option_a_image: 1,
+  option_b_image: 1,
+  option_c_image: 1,
+  option_d_image: 1,
 };
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: any) => {
@@ -52,4 +62,9 @@ export const uploadFile = () =>
     { name: 'car_images', maxCount: 5 },
     { name: 'verification_image', maxCount: 1 },
     { name: 'chat_images', maxCount: 3 },
+    { name: 'question_image', maxCount: 1 },
+    { name: 'option_a_image', maxCount: 1 },
+    { name: 'option_b_image', maxCount: 1 },
+    { name: 'option_c_image', maxCount: 1 },
+    { name: 'option_d_image', maxCount: 1 },
   ]);

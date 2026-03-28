@@ -3,7 +3,7 @@ import { EXAM_TYPES } from "../../../interfaces";
 import { ISubject } from "./subject.interface";
 
 
-const SubjectSchema = new Schema<ISubject>(
+const subjectSchema = new Schema<ISubject>(
     {
         name: { type: String, required: true },
         slug: { type: String, required: true },
@@ -18,5 +18,5 @@ const SubjectSchema = new Schema<ISubject>(
     { timestamps: true, versionKey: false }
 );
 
-const Subject = mongoose.model<ISubject>("Subject", SubjectSchema);
+const Subject = mongoose.model<ISubject>("Subject", subjectSchema);
 export default Subject;

@@ -103,6 +103,20 @@ const createQuestionSchema = z
     message: "correctOptionIndex is out of range",
     path: ["correctOptionIndex"],
   }).superRefine((data, ctx) => {
+
+    if (data.examType === "semi_matura" || data.examType === "matura") {
+      if (!data.subjectId) {
+        ctx.addIssue({
+          code: 'custom',
+          maximum: 1,
+          origin: 'superRefine',
+          inclusive: true,
+          path: ['error'],
+          message: "Subject ID is required when exam type is semi_matura or matura",
+        });
+      }
+    }
+
     if (data.examType === "provime") {
       if (!data.facultyId) {
         ctx.addIssue({

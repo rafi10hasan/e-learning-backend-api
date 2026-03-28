@@ -2,7 +2,7 @@ import mongoose, { Schema } from "mongoose";
 import { IFaculty } from "./faculty.interface";
 
 
-const FacultySchema = new Schema<IFaculty>(
+const facultySchema = new Schema<IFaculty>(
     {
         name: { type: String, required: true },
         slug: { type: String, required: true },
@@ -11,5 +11,5 @@ const FacultySchema = new Schema<IFaculty>(
     { timestamps: true, versionKey: false }
 );
 
-const Faculty = mongoose.model<IFaculty>("Faculty", FacultySchema);
+const Faculty = mongoose.model<IFaculty>("Faculty", facultySchema);
 export default Faculty;

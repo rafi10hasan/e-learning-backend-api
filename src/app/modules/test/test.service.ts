@@ -1,7 +1,11 @@
 import mongoose, { Types } from "mongoose";
-import Test, { ITest } from "../models/Test";
-import Question from "../models/Question";
-import { BadRequestError, NotFoundError } from "../errors";
+import { BadRequestError, NotFoundError } from "../../errors/request/apiError";
+import Question from "../question/question.model";
+import { ITest } from "./test.interface";
+import Test from "./test.model";
+import { TCreateTestPayload } from "./test.zod";
+
+
 
 interface CreateTestPayload {
   title: string;
@@ -24,12 +28,12 @@ interface GetTestsFilter {
 }
 
 // ─── Create ───────────────────────────────────────────────────
-const createTest = async (payload: CreateTestPayload): Promise<ITest> => {
+const createTest = async (payload: TCreateTestPayload): Promise<ITest> => {
+
+  const totalQuestions = payload.questionIds ? payload.questionIds.length : 0;
   const test = await Test.create({
     ...payload,
-    questionIds: [],
-    totalQuestions: 0,
-    status: "draft",
+    totalQuestions: totalQuestions,
   });
   return test;
 };

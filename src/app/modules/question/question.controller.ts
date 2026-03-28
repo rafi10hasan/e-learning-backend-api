@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
+import { QuestionFilterInput } from "../../../helpers/questionFilter";
 import asyncHandler from "../../../shared/asynchandler";
 import sendResponse from "../../../shared/sendResponse";
-import { questionService } from "./question.service";
 import { QuestionFiles } from "./question.interface";
+import { questionService } from "./question.service";
 
 
 const createQuestion = asyncHandler(async (req: Request, res: Response) => {
@@ -12,6 +13,21 @@ const createQuestion = asyncHandler(async (req: Request, res: Response) => {
         statusCode: StatusCodes.CREATED,
         success: true,
         message: "Question created successfully.",
+        data: result,
+    });
+});
+
+const getAllQuestionByExamTypeAndSubjects = asyncHandler(async (req: Request, res: Response) => {
+    const result = await questionService.fetchQuestions({
+        ...req.query,
+        page: req.query.page ? Number(req.query.page) : 1,
+        limit: req.query.limit ? Number(req.query.limit) : 20,
+    } as QuestionFilterInput & { page?: number; limit?: number });
+
+    sendResponse(res, {
+        statusCode: StatusCodes.OK,
+        success: true,
+        message: "Questions fetched successfully.",
         data: result,
     });
 });
@@ -72,6 +88,7 @@ const createQuestion = asyncHandler(async (req: Request, res: Response) => {
 
 export const questionController = {
     createQuestion,
+    getAllQuestionByExamTypeAndSubjects
     //   getAllQuestions,
     //   getQuestionById,
     //   updateQuestion,

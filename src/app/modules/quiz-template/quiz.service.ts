@@ -121,71 +121,71 @@ const getTemplateById = async (id: string): Promise<IQuizTemplate> => {
 };
 
 // ─── Generate Quiz (student use) ──────────────────────────────
-const generateQuiz = async (templateId: string, userId: string) => {
-  const template = await QuizTemplate.findById(templateId);
-  if (!template || !template.isActive || template.status !== "published") {
-    throw new NotFoundError("Quiz template not found");
-  }
+// const generateQuiz = async (templateId: string, userId: string) => {
+//   const template = await QuizTemplate.findById(templateId);
+//   if (!template || !template.isActive || template.status !== "published") {
+//     throw new NotFoundError("Quiz template not found");
+//   }
 
-  // core subjects থেকে questions
-  const coreQuestionsArrays = await Promise.all(
-    template.subjectFilters.map((filter) =>
-      Question.find({
-        examType: template.examType,
-        year: template.year,
-        subjectId: filter.subjectId,
-        source: { $in: ["practice", "both"] },
-        status: "published",
-        isActive: true,
-      })
-        .limit(filter.questionCount)
-        .populate("passageId", "passageCode title content")
-    )
-  );
+//   // core subjects থেকে questions
+//   const coreQuestionsArrays = await Promise.all(
+//     template.subjectFilters.map((filter) =>
+//       Question.find({
+//         examType: template.examType,
+//         year: template.year,
+//         subjectId: filter.subjectId,
+//         source: { $in: ["practice", "both"] },
+//         status: "published",
+//         isActive: true,
+//       })
+//         .limit(filter.questionCount)
+//         .populate("passageId", "passageCode title content")
+//     )
+//   );
 
-  let electiveQuestions: unknown[] = [];
+//   let electiveQuestions: unknown[] = [];
 
-  // elective — শুধু Matura plan এর জন্য
-  if (template.electiveQuestionCount > 0) {
-    const subscription = await Subscription.findOne({
-      userId,
-      status: "active",
-      expiryDate: { $gt: new Date() },
-    }).populate("planId");
+//   // elective — শুধু Matura plan এর জন্য
+//   if (template.electiveQuestionCount > 0) {
+//     const subscription = await Subscription.findOne({
+//       userId,
+//       status: "active",
+//       expiryDate: { $gt: new Date() },
+//     }).populate("planId");
 
-    if (!subscription) {
-      throw new BadRequestError("No active subscription found");
-    }
+//     if (!subscription) {
+//       throw new BadRequestError("No active subscription found");
+//     }
 
-    const plan = (subscription.planId as { slug: string }).slug;
-    const hasMatura = plan === "matura" || plan === "full_access";
+//     const plan = (subscription.planId as { slug: string }).slug;
+//     const hasMatura = plan === "matura" || plan === "full_access";
 
-    if (hasMatura && subscription.electiveSubjectId) {
-      electiveQuestions = await Question.find({
-        subjectId: subscription.electiveSubjectId,
-        examType: template.examType,
-        year: template.year,
-        source: { $in: ["practice", "both"] },
-        status: "published",
-        isActive: true,
-      })
-        .limit(template.electiveQuestionCount)
-        .populate("passageId", "passageCode title content");
-    }
-  }
+//     if (hasMatura && subscription.electiveSubjectId) {
+//       electiveQuestions = await Question.find({
+//         subjectId: subscription.electiveSubjectId,
+//         examType: template.examType,
+//         year: template.year,
+//         source: { $in: ["practice", "both"] },
+//         status: "published",
+//         isActive: true,
+//       })
+//         .limit(template.electiveQuestionCount)
+//         .populate("passageId", "passageCode title content");
+//     }
+//   }
 
-  const allQuestions = [...coreQuestionsArrays.flat(), ...electiveQuestions];
+//   const allQuestions = [...coreQuestionsArrays.flat(), ...electiveQuestions];
 
-  return {
-    templateId: template._id,
-    title: template.title,
-    examType: template.examType,
-    year: template.year,
-    durationMinutes: template.durationMinutes,
-    totalQuestions: allQuestions.length,
-    questions: allQuestions,
-  };
-};
+//   return {
+//     templateId: template._id,
+//     title: template.title,
+//     examType: template.examType,
+//     year: template.year,
+//     durationMinutes: template.durationMinutes,
+//     totalQuestions: allQuestions.length,
+//     questions: allQuestions,
+//   };
+// };
 
 // ─── Publish ──────────────────────────────────────────────────
 const publishTemplate = async (id: string): Promise<IQuizTemplate> => {
@@ -262,7 +262,7 @@ export const quizTemplateService = {
   createQuizTemplate,
   getAllTemplates,
   getTemplateById,
-  generateQuiz,
+  // generateQuiz,
   publishTemplate,
   updateTemplate,
   deleteTemplate,

@@ -4,7 +4,6 @@ import { ACCESS_TYPES, EXAM_TYPES, TEST_TYPES } from "../../../interfaces";
 import { TEST_STATUS } from "./test.constant";
 
 
-
 const TestSchema = new Schema<ITest>(
   {
     title: { type: String, required: true },
@@ -14,8 +13,6 @@ const TestSchema = new Schema<ITest>(
       required: true,
     },
     year: { type: Number, required: true },
-    structureType: { type: String, required: true },
-    departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
     testType: {
       type: String,
       enum: Object.values(TEST_TYPES),
@@ -24,15 +21,14 @@ const TestSchema = new Schema<ITest>(
     access: {
       type: String,
       enum: Object.values(ACCESS_TYPES),
-      default: "free",
+      required:true
     },
     status: {
       type: String,
       enum: Object.values(TEST_STATUS),
-      default: "draft",
+      default: TEST_STATUS.PUBLISHED,
     },
     totalQuestions: { type: Number, default: 0 },
-    durationMinutes: { type: Number },
     questionIds: [{ type: Schema.Types.ObjectId, ref: "Question" }],
     isActive: { type: Boolean, default: true },
   },
@@ -42,4 +38,5 @@ const TestSchema = new Schema<ITest>(
 TestSchema.index({ examType: 1, year: 1, testType: 1 });
 TestSchema.index({ status: 1, isActive: 1 });
 
-export default mongoose.model<ITest>("Test", TestSchema);
+const Test = mongoose.model<ITest>("Test", TestSchema);
+export default Test;
