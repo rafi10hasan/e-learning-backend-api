@@ -1,9 +1,11 @@
 import mongoose, { Types } from "mongoose";
+import { TEST_TYPES } from "../../../interfaces";
 import { BadRequestError, NotFoundError } from "../../errors/request/apiError";
 import Question from "../question/question.model";
 import { ITest } from "./test.interface";
 import Test from "./test.model";
 import { TCreateTestPayload } from "./test.zod";
+import Department from "../department/department.model";
 
 
 
@@ -18,18 +20,70 @@ interface CreateTestPayload {
   durationMinutes?: number;
 }
 
-interface GetTestsFilter {
-  examType?: string;
-  year?: number;
-  testType?: string;
-  access?: string;
-  status?: string;
-  departmentId?: string;
-}
+
+const getPaginatedTestsByType = async (
+  testType: string,
+  input: {
+    examType?: string;
+    departmentId?: string;
+    page?: number;
+    limit?: number
+  }
+) => {
+  const page = Number(input.page) || 1;
+  const limit = Number(input.limit) || 20;
+  const skip = (page - 1) * limit;
+
+  // 1. Dynamic Filter Query Banano
+  const query: any = {
+    testType: testType,
+    isActive: true
+  };
+
+  // Jodi examType thake (Mature/Semimature/Provime)
+  if (input.examType) {
+    query.examType = input.examType;
+  }
+
+  // Provime-er jonno jodi specific department thake
+  if (input.departmentId) {
+    query.departmentId = input.departmentId;
+  }
+
+  // 2. Parallel Database Operations
+  const [tests, total] = await Promise.all([
+    Test.find(query)
+      .select("access title totalQuestions totalSubjects year")
+      .sort({ year: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Test.countDocuments(query)
+  ]);
+
+  const formattedTests = tests.map(test => ({
+    testId: test._id,
+    title: test.title,
+    totalQuestions: test.totalQuestions,
+    totalSubjects: test.totalSubjects,
+    access: test.access,
+    year: test.year
+  }));
+
+  return {
+    data: formattedTests,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
 
 // ─── Create ───────────────────────────────────────────────────
 const createTest = async (payload: TCreateTestPayload): Promise<ITest> => {
-
   const totalQuestions = payload.questionIds ? payload.questionIds.length : 0;
   const test = await Test.create({
     ...payload,
@@ -38,20 +92,94 @@ const createTest = async (payload: TCreateTestPayload): Promise<ITest> => {
   return test;
 };
 
-// ─── Get All ──────────────────────────────────────────────────
-const getAllTests = async (filter: GetTestsFilter): Promise<ITest[]> => {
-  const query: Record<string, unknown> = { isActive: true };
-  if (filter.examType) query.examType = filter.examType;
-  if (filter.year) query.year = Number(filter.year);
-  if (filter.testType) query.testType = filter.testType;
-  if (filter.access) query.access = filter.access;
-  if (filter.status) query.status = filter.status;
-  if (filter.departmentId) query.departmentId = filter.departmentId;
 
-  return Test.find(query)
-    .populate("departmentId", "name slug")
-    .select("-questionIds")
-    .sort({ year: -1 });
+
+// Main functions
+const getAllOfficialTests = async (input: {
+  category?: string;
+  departmentId?: string; page?: number; limit?: number
+}) => {
+  return getPaginatedTestsByType(TEST_TYPES.OFFICIAL, input);
+};
+
+// get all additioinal tests
+const getAllAdditionalTests = async (input: {
+  category?: string;
+  departmentId?: string; page?: number; limit?: number
+}) => {
+  return getPaginatedTestsByType(TEST_TYPES.ADDITIONAL, input);
+};
+
+const getQuestionByTestId = async (
+  testId: string,
+  input: { department?: string; page?: number; limit?: number }
+) => {
+  const page = Number(input.page) || 1;
+  const limit = Number(input.limit) || 20;
+  const skip = (page - 1) * limit;
+
+  // 1. Test find kora (Question IDs list-er jonno)
+  const test = await Test.findById(testId).select("questionIds title").lean();
+  if (!test) {
+    throw new NotFoundError("Test not found");
+  }
+
+  // 2. Base Query setup
+  const query: any = {
+    _id: { $in: test.questionIds },
+    isActive: true
+  };
+
+  // 3. Department Name/Slug theke ID ber kora
+  if (input.department) {
+    const departmentDoc = await Department.findOne({
+      $or: [
+        { name: input.department },
+        { slug: input.department }
+      ]
+    }).select("_id").lean();
+
+    if (!departmentDoc) {
+      // Jodi department na paoya jay, tahole empty array return korbe
+      return {
+        testTitle: test.title,
+        data: [],
+        meta: { total: 0, page, limit, totalPages: 0 }
+      };
+    }
+
+    // Found ID query-te set kora
+    query.departmentId = departmentDoc._id;
+  }
+
+  // 4. Parallel Operations
+  const [questions, total] = await Promise.all([
+    Question.find(query)
+      .select("questionText options year departmentId questionImageUrl correctOptionIndex explanation")
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Question.countDocuments(query)
+  ]);
+
+  return {
+    testTitle: test.title,
+    data: questions.map(q => ({
+      questionId: q._id,
+      questionText: q.questionText,
+      options: q.options,
+      questionImage: q.questionImageUrl || null,
+      year: q.year,
+      correctOptionIndex: q.correctOptionIndex,
+      explanation: q.explanation
+    })),
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 // ─── Get By Id ────────────────────────────────────────────────
@@ -287,7 +415,8 @@ const deleteTest = async (id: string): Promise<void> => {
 
 export const testService = {
   createTest,
-  getAllTests,
+  getAllOfficialTests,
+  getAllAdditionalTests,
   getTestById,
   getTestWithQuestions,
   getLinkableQuestions,
@@ -297,4 +426,5 @@ export const testService = {
   publishTest,
   updateTest,
   deleteTest,
+  getQuestionByTestId
 };

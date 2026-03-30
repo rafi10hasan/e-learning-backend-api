@@ -9,8 +9,12 @@ export interface ITest extends Document {
     year: number;
     testType: TTestTypes;
     access: TAccessTypes;
+    facultyId: Types.ObjectId;
+    departmentIds: Types.ObjectId[];
+    subjectIds: Types.ObjectId[];
     status: TTestStatus;
     totalQuestions: number;
+    totalSubjects:number;
     durationMinutes?: number;
     questionIds: Types.ObjectId[];
     isActive: boolean;

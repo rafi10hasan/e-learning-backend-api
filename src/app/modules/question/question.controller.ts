@@ -5,10 +5,21 @@ import asyncHandler from "../../../shared/asynchandler";
 import sendResponse from "../../../shared/sendResponse";
 import { QuestionFiles } from "./question.interface";
 import { questionService } from "./question.service";
+import Question from "./question.model";
 
 
 const createQuestion = asyncHandler(async (req: Request, res: Response) => {
     const result = await questionService.createQuestion(req.body, req.files as QuestionFiles);
+    sendResponse(res, {
+        statusCode: StatusCodes.CREATED,
+        success: true,
+        message: "Question created successfully.",
+        data: result,
+    });
+});
+
+const createQuestionmany = asyncHandler(async (req: Request, res: Response) => {
+    const result = await Question.insertMany(req.body);
     sendResponse(res, {
         statusCode: StatusCodes.CREATED,
         success: true,
@@ -28,24 +39,12 @@ const getAllQuestionByExamTypeAndSubjects = asyncHandler(async (req: Request, re
         statusCode: StatusCodes.OK,
         success: true,
         message: "Questions fetched successfully.",
-        data: result,
+        meta: result.meta,
+        data: result.data,
     });
 });
 
-// const getAllQuestions = asyncHandler(async (req: Request, res: Response) => {
-//   const filter = {
-//     ...req.query,
-//     page: req.query.page ? Number(req.query.page) : 1,
-//     limit: req.query.limit ? Number(req.query.limit) : 20,
-//   };
-//   const result = await questionService.getAllQuestions(filter);
-//   sendResponse(res, {
-//     statusCode: StatusCodes.OK,
-//     success: true,
-//     message: "Questions fetched successfully.",
-//     data: result,
-//   });
-// });
+
 
 // const getQuestionById = asyncHandler(async (req: Request, res: Response) => {
 //   const result = await questionService.getQuestionById(req.params.id);
@@ -88,7 +87,8 @@ const getAllQuestionByExamTypeAndSubjects = asyncHandler(async (req: Request, re
 
 export const questionController = {
     createQuestion,
-    getAllQuestionByExamTypeAndSubjects
+    getAllQuestionByExamTypeAndSubjects,
+    createQuestionmany
     //   getAllQuestions,
     //   getQuestionById,
     //   updateQuestion,

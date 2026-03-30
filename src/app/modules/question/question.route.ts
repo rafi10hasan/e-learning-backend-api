@@ -22,6 +22,14 @@ questionRouter.post(
     questionController.createQuestion,
 );
 
+questionRouter.post(
+    '/add/many',
+    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+    uploadFile(),
+    validateFileSizes,
+    validateFormDataRequest(questionValidationZodSchema.createQuestionSchema.array()),
+    questionController.createQuestionmany,
+);
 
 questionRouter.get(
     '/fetch',

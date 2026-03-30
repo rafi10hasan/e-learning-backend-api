@@ -4,6 +4,7 @@ import { BadRequestError } from "../../errors/request/apiError";
 import Faculty from "../faculty/faculty.model";
 import Department from "./department.model";
 import { TCreateDepartmentPayload } from "./department.zod";
+import mongoose from "mongoose";
 
 
 const createDepartmentUnderFaculty = async (payload: TCreateDepartmentPayload, facultyId: string) => {
@@ -42,8 +43,9 @@ const createDepartmentUnderFaculty = async (payload: TCreateDepartmentPayload, f
 
 
 const getAllDepartmentByFacultyId = async (facultyId: string) => {
-
-    const result = await Department.find({ facultyId }).lean();
+   console.log(facultyId)
+    const result = await Department.find({ facultyId: new mongoose.Types.ObjectId(facultyId) });
+    console.log({result})
     const formattedResult = result.map(department => ({
         departmentId: department._id,
         name: department.name,

@@ -115,6 +115,16 @@ const createQuestionSchema = z
           message: "Subject ID is required when exam type is semi_matura or matura",
         });
       }
+      if (data.departmentId || data.facultyId) {
+        ctx.addIssue({
+          code: 'custom',
+          maximum: 1,
+          origin: 'superRefine',
+          inclusive: true,
+          path: ['error'],
+          message: "Department ID or Faculty ID is not required when exam type is semi_matura or matura",
+        });
+      }
     }
 
     if (data.examType === "provime") {
@@ -136,6 +146,17 @@ const createQuestionSchema = z
           inclusive: true,
           path: ['error'],
           message: "Department ID is required when exam type is provime",
+        });
+      }
+
+      if (data.subjectId) {
+        ctx.addIssue({
+          code: 'custom',
+          maximum: 1,
+          origin: 'superRefine',
+          inclusive: true,
+          path: ['error'],
+          message: "Subject ID is not required when exam type is provime",
         });
       }
     }

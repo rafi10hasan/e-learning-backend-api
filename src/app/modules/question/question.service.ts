@@ -2,6 +2,7 @@ import { filterQuestions, QuestionFilterInput } from "../../../helpers/questionF
 import { EXAM_TYPES } from "../../../interfaces";
 import { uploadToCloudinary } from "../../cloudinary/uploadImageToCLoudinary";
 import { BadRequestError } from "../../errors/request/apiError";
+import Department from "../department/department.model";
 import Faculty from "../faculty/faculty.model";
 import Subject from "../subject/subject.model";
 import { IOption, IQuestion, QuestionFiles } from "./question.interface";
@@ -30,7 +31,7 @@ const createQuestion = async (
         if (!isExistFaculty) {
             throw new BadRequestError("Faculty not found");
         }
-        const isExistDepartment = await Faculty.findById(payload.departmentId).select("_id");
+        const isExistDepartment = await Department.findById(payload.departmentId).select("_id");
 
         if (!isExistDepartment) {
             throw new BadRequestError("Department not found");
@@ -98,22 +99,39 @@ const fetchQuestions = async (
     input: QuestionFilterInput & { page?: number; limit?: number }
 ) => {
     const { page = 1, limit = 20, ...rest } = input;
+
+    // Tomar proshno onujayi ekhane call hobe
     const query = await filterQuestions(rest);
     const skip = (page - 1) * limit;
 
     const pipeline: any[] = [
         { $match: query },
 
-        // Subject Join
-        {
-            $lookup: {
-                from: "subjects",
-                localField: "subjectId",
-                foreignField: "_id",
-                as: "subject"
-            }
-        },
-        { $unwind: { path: "$subject", preserveNullAndEmptyArrays: true } },
+        // Subject Join (Only if NOT provime)
+        ...(input.examType !== "provime" ? [
+            {
+                $lookup: {
+                    from: "subjects",
+                    localField: "subjectId",
+                    foreignField: "_id",
+                    as: "subject"
+                }
+            },
+            { $unwind: { path: "$subject", preserveNullAndEmptyArrays: true } }
+        ] : []),
+
+        // Department Join (Only for Provime)
+        ...(input.examType === "provime" ? [
+            {
+                $lookup: {
+                    from: "departments",
+                    localField: "departmentId",
+                    foreignField: "_id",
+                    as: "department"
+                }
+            },
+            { $unwind: { path: "$department", preserveNullAndEmptyArrays: true } }
+        ] : []),
 
         // Passage Join
         {
@@ -128,7 +146,6 @@ const fetchQuestions = async (
 
         { $sort: { createdAt: -1 } },
 
-        // রেসপন্স ফরম্যাট করা (কোনো Nested Data থাকবে না)
         {
             $facet: {
                 data: [
@@ -139,10 +156,12 @@ const fetchQuestions = async (
                             _id: 0,
                             questionId: "$_id",
                             questionText: 1,
-                            subjectName: { $ifNull: ["$subject.name", null] },
-                            passageTitle: { $ifNull: ["$passage.title", null] }, // প্যাসেজ না থাকলে null
+                            subjectName: input.examType === "provime" ? null : { $ifNull: ["$subject.name", null] },
+                            departmentName: input.examType === "provime" ? { $ifNull: ["$department.name", null] } : null,
+                            passageTitle: { $ifNull: ["$passage.title", null] },
                             status: 1,
                             year: 1,
+                            examType: 1
                         }
                     }
                 ],
@@ -157,7 +176,7 @@ const fetchQuestions = async (
     const total = result[0].totalCount[0]?.count || 0;
 
     return {
-        questions,
+        data: questions,
         meta: {
             total,
             page,

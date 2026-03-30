@@ -19,4 +19,22 @@ testRouter.post(
     testController.createTest,
 );
 
+testRouter.get(
+    '/official',
+    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+    testController.getAllOfficialTestsIntoDb
+);
+
+testRouter.get(
+    '/additional',
+    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+    testController.getAllAdditionalTestsIntoDb
+);
+
+testRouter.get(
+    '/questions/:testId',
+    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+    testController.getQuestionsByTestIdIntoDb
+);
+
 export default testRouter;
