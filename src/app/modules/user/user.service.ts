@@ -40,7 +40,7 @@ const createAccount = async (payload: TRegistrationPayload) => {
   try {
     await sendMail(mailOptions);
   } catch (error) {
-    throw new BadRequestError('Failed to send verification email. Please try again.');
+    throw new BadRequestError('Failed to send verification email. Please try again!.');
   }
 
 
