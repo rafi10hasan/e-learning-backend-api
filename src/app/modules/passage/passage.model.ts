@@ -1,5 +1,6 @@
 import mongoose, { Schema} from "mongoose";
 import { IPassage } from "./passage.interface";
+import { EXAM_TYPES } from "../../../interfaces";
 
 
 
@@ -10,10 +11,10 @@ const PassageSchema = new Schema<IPassage>(
     content: { type: String, required: true },
     examType: {
       type: String,
-      enum: ["semi_matura", "matura", "provime"],
+      enum: Object.values(EXAM_TYPES),
       required: true,
     },
-    year: { type: Number, required: true },
+    passageImageUrl: { type: String, default: null},
     subjectId: { type: Schema.Types.ObjectId, ref: "Subject" },
     isActive: { type: Boolean, default: true },
   },

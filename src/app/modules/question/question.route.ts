@@ -31,6 +31,15 @@ questionRouter.post(
     questionController.createQuestionmany,
 );
 
+
+questionRouter.post(
+    '/import',
+    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+    uploadFile(),
+    validateFileSizes,
+    questionController.importQuestionIntoDb,
+);
+
 questionRouter.get(
     '/fetch',
     authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),

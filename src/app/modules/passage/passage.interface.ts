@@ -7,8 +7,10 @@ export interface IPassage extends Document {
   title: string;
   content: string;
   examType: TExamTypes;
-  year: number;
-  subjectId?: Types.ObjectId;
+  passageImageUrl?: string;
+  subjectId: Types.ObjectId | null;
+  facultyId: Types.ObjectId | null;
+  departmentId: Types.ObjectId | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

@@ -1,7 +1,8 @@
 import { Request } from 'express';
 import multer from 'multer';
 
-const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/svg+xml'];
+const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/svg+xml', 'text/csv'];
+
 
 const storage = multer.memoryStorage();
 
@@ -16,6 +17,7 @@ export const MAX_FILE_SIZES: Record<string, number> = {
   option_c_image: 1 * 1024 * 1024,
   option_d_image: 1 * 1024 * 1024,
   chat_images: 1 * 1024 * 1024,
+  csv_file: 5 * 1024 * 1024,
 };
 
 export const MAX_FILE_COUNTS: Record<string, number> = {
@@ -28,6 +30,7 @@ export const MAX_FILE_COUNTS: Record<string, number> = {
   option_b_image: 1,
   option_c_image: 1,
   option_d_image: 1,
+  csv_file: 1,
 };
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: any) => {
@@ -42,6 +45,12 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: any) => {
   if (!IMAGE_MIME_TYPES.includes(file.mimetype)) {
     const allowedFormats = IMAGE_MIME_TYPES.map((type) => type?.split('/')[1]).join(', ');
     return cb(new Error(`${file.fieldname} must be an image file: ${allowedFormats}`));
+  }
+
+  if (file.fieldname === 'csv_file') {
+    if (file.mimetype !== 'text/csv') {
+      return cb(new Error(`csv_file must be a CSV file`));
+    }
   }
 
   // Per-file size validation
@@ -67,4 +76,5 @@ export const uploadFile = () =>
     { name: 'option_b_image', maxCount: 1 },
     { name: 'option_c_image', maxCount: 1 },
     { name: 'option_d_image', maxCount: 1 },
+    { name: 'csv_file', maxCount: 1 },
   ]);

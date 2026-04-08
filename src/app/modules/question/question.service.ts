@@ -1,3 +1,5 @@
+import csv from 'csv-parser';
+import { Readable } from 'stream';
 import { filterQuestions, QuestionFilterInput } from "../../../helpers/questionFilter";
 import { EXAM_TYPES } from "../../../interfaces";
 import { uploadToCloudinary } from "../../cloudinary/uploadImageToCLoudinary";
@@ -7,7 +9,7 @@ import Faculty from "../faculty/faculty.model";
 import Subject from "../subject/subject.model";
 import { IOption, IQuestion, QuestionFiles } from "./question.interface";
 import Question from "./question.model";
-import { TCreateQuestionPayload } from "./question.zod";
+import { createQuestionSchema, TCreateQuestionPayload } from "./question.zod";
 
 const OPTION_KEYS = ["a", "b", "c", "d"] as const;
 
@@ -18,23 +20,24 @@ const createQuestion = async (
 ): Promise<IQuestion> => {
 
     if (payload.examType && (payload.examType === EXAM_TYPES.MATURE || payload.examType === EXAM_TYPES.SEMIMATURE)) {
-        const isExistSubject = await Subject.findById(payload.subjectId).select("_id");
+
+        const isExistSubject = await Subject.findOne({ _id: payload.subjectId, examType: payload.examType }).select("_id");
 
         if (!isExistSubject) {
-            throw new BadRequestError("Subject not found");
+            throw new BadRequestError("Subject not found for the given exam type");
         }
     }
 
     if (payload.examType && (payload.examType === EXAM_TYPES.ENTRANCE_EXAM)) {
-        const isExistFaculty = await Faculty.findById(payload.facultyId).select("_id");
+        const isExistFaculty = await Faculty.findOne({ _id: payload.facultyId, examType: payload.examType }).select("_id");
 
         if (!isExistFaculty) {
-            throw new BadRequestError("Faculty not found");
+            throw new BadRequestError("Faculty not found for the given exam type");
         }
-        const isExistDepartment = await Department.findById(payload.departmentId).select("_id");
+        const isExistDepartment = await Department.findOne({ _id: payload.departmentId, examType: payload.examType, facultyId: payload.facultyId }).select("_id");
 
         if (!isExistDepartment) {
-            throw new BadRequestError("Department not found");
+            throw new BadRequestError("Department not found for the given faculty and exam type");
         }
     }
 
@@ -185,6 +188,87 @@ const fetchQuestions = async (
         },
     };
 };
+const importQuestionsToDb = async (fileBuffer: Buffer) => {
+    const validQuestions: any[] = [];
+    const failedRows: any[] = [];
+    let rowNumber = 1;
+
+    const stream = Readable.from(fileBuffer.toString());
+
+    await new Promise((resolve, reject) => {
+        stream
+            .pipe(csv({ mapHeaders: ({ header }) => header.trim() }))
+            .on('data', (row) => {
+                rowNumber++;
+                const formattedQuestion = {
+                    examType: row.examType?.trim(),
+                    year: row.year?.trim(),
+                    facultyId: row.facultyId?.trim() || undefined,
+                    departmentId: row.departmentId?.trim() || undefined,
+                    subjectId: row.subjectId?.trim() || undefined,
+                    source: row.source?.trim(),
+                    testType: row.testType?.trim(),
+                    access: row.access?.trim(),
+                    questionText: row.questionText?.trim(),
+                    questionImageUrl: row.questionImageUrl?.trim() || undefined,
+                    options: [
+                        { text: row['option[0].text']?.trim(), imageUrl: row['option[0].imageUrl']?.trim() || undefined },
+                        { text: row['option[1].text']?.trim(), imageUrl: row['option[1].imageUrl']?.trim() || undefined },
+                        { text: row['option[2].text']?.trim(), imageUrl: row['option[2].imageUrl']?.trim() || undefined },
+                        { text: row['option[3].text']?.trim(), imageUrl: row['option[3].imageUrl']?.trim() || undefined },
+                    ],
+                    correctOptionIndex: parseInt(row.correctOptionIndex) || 0,
+                    explanation: row.explanation?.trim() || undefined,
+                    status: row.status?.trim() || 'published',
+                };
+
+                const validation = createQuestionSchema.safeParse(formattedQuestion);
+                if (validation.success) {
+                    validQuestions.push(validation.data);
+                } else {
+                    failedRows.push({
+                        row: rowNumber,
+                        data: row, // original CSV row data ta rekhe dilam
+                        errors: validation.error.format(),
+                    });
+                }
+            })
+            .on('end', resolve)
+            .on('error', reject);
+    });
+
+    if (validQuestions.length === 0) {
+        return { success: false, validCount: 0, failedRows };
+    }
+
+    // --- Duplicate Check Logic ---
+    const questionTexts = validQuestions.map((q) => q.questionText);
+    const existingQuestions = await Question.find({
+        questionText: { $in: questionTexts },
+        subjectId: validQuestions[0].subjectId,
+        year: { $in: validQuestions.map((q) => q.year) },
+    }).select('questionText');
+
+    const existingTextsSet = new Set(existingQuestions.map((q) => q.questionText));
+
+    // Jegulo database-e nai (Insert hobe)
+    const finalQuestionsToInsert = validQuestions.filter((q) => !existingTextsSet.has(q.questionText));
+
+    // Jegulo database-e age thekei ache (Skip hobe)
+    const skippedQuestions = validQuestions.filter((q) => existingTextsSet.has(q.questionText));
+
+    let insertedResult: any = [];
+    if (finalQuestionsToInsert.length > 0) {
+        insertedResult = await Question.insertMany(finalQuestionsToInsert);
+    }
+
+    return {
+        success: true,
+        insertedData: insertedResult,     // Notun jegulo database-e gelo
+        skippedData: skippedQuestions,    // Jegulo duplicate chilo
+        failedData: failedRows,          // Jegulo validation fail korlo
+    };
+};
 
 // const getAllQuestions = async (filter: GetQuestionsFilter) => {
 //     const { page = 1, limit = 20, ...rest } = filter;
@@ -270,7 +354,8 @@ const fetchQuestions = async (
 
 export const questionService = {
     createQuestion,
-    fetchQuestions
+    fetchQuestions,
+    importQuestionsToDb
     // getAllQuestions,
     // getQuestionById,
     // updateQuestion,

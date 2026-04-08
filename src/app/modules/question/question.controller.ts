@@ -4,8 +4,8 @@ import { QuestionFilterInput } from "../../../helpers/questionFilter";
 import asyncHandler from "../../../shared/asynchandler";
 import sendResponse from "../../../shared/sendResponse";
 import { QuestionFiles } from "./question.interface";
-import { questionService } from "./question.service";
 import Question from "./question.model";
+import { questionService } from "./question.service";
 
 
 const createQuestion = asyncHandler(async (req: Request, res: Response) => {
@@ -25,6 +25,42 @@ const createQuestionmany = asyncHandler(async (req: Request, res: Response) => {
         success: true,
         message: "Question created successfully.",
         data: result,
+    });
+});
+
+const importQuestionIntoDb = asyncHandler(async (req: Request, res: Response) => {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const csvFile = files?.csv_file?.[0];
+
+    if (!csvFile) {
+        return res.status(StatusCodes.BAD_REQUEST).json({ message: "CSV file upload korun" });
+    }
+
+    const result = await questionService.importQuestionsToDb(csvFile.buffer);
+
+    if (!result.success && result.validCount === 0) {
+        return sendResponse(res, {
+            statusCode: StatusCodes.BAD_REQUEST,
+            success: false,
+            message: "No valid questions found to import.",
+            data: { errors: result.failedRows },
+        });
+    }
+
+    sendResponse(res, {
+        statusCode: StatusCodes.CREATED,
+        success: true,
+        message: "Import processing completed.",
+        data: {
+            summary: {
+                insertedCount: result.insertedData?.length || 0,
+                skippedCount: result.skippedData?.length || 0,
+                failedCount: result.failedData?.length || 0,
+            },
+            inserted: result.insertedData || [], // Notun add kora questions
+            skipped: result.skippedData || [],   // Database-e age thekei thaka questions
+            failed: result.failedData || [],     // Validation error rows
+        },
     });
 });
 
@@ -88,7 +124,8 @@ const getAllQuestionByExamTypeAndSubjects = asyncHandler(async (req: Request, re
 export const questionController = {
     createQuestion,
     getAllQuestionByExamTypeAndSubjects,
-    createQuestionmany
+    createQuestionmany,
+    importQuestionIntoDb
     //   getAllQuestions,
     //   getQuestionById,
     //   updateQuestion,

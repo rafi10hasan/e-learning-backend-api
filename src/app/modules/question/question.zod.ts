@@ -57,12 +57,12 @@ const optionSchema = z.object({
 });
 
 // create question schema
-const createQuestionSchema = z
+export const createQuestionSchema = z
   .object({
     examType: z.enum(["semi_matura", "matura", "provime"], {
       message: "Exam type must be semi_matura, matura or provime",
     }),
-    year: z
+    year: z.coerce
       .number({ message: "Year is required" })
       .int({ message: "Year must be an integer" })
       .min(2000, { message: "Year must be 2000 or later" })
@@ -90,7 +90,7 @@ const createQuestionSchema = z
       .array(optionSchema, { message: "Options must be an array" })
       .min(2, { message: "At least 2 options are required" })
       .max(4, { message: "Maximum 4 options allowed" }),
-    correctOptionIndex: z
+    correctOptionIndex: z.coerce
       .number({ message: "Correct option index is required" })
       .int({ message: "Correct option index must be an integer" })
       .min(0, { message: "Correct option index must be 0 or greater" }),
