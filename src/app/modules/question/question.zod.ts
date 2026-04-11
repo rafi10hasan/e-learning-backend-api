@@ -156,7 +156,7 @@ export const createQuestionSchema = z
           origin: 'superRefine',
           inclusive: true,
           path: ['error'],
-          message: "Subject ID is not required when exam type is provime",
+          message: "Subject ID is not required when Exam type is provime",
         });
       }
     }
