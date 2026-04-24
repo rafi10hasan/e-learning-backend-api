@@ -1,5 +1,5 @@
 import { Document, Model, Types } from 'mongoose';
-import { TBadge, TProvider, TSubscriptionMode, TSubscriptionPlan, TSubscriptionStatus, TUserRole } from './user.constant';
+import { TProvider, TUserRole } from './user.constant';
 
 
 export type TProfileImage = {
@@ -13,22 +13,21 @@ export interface registerSocialPayload {
 }
 
 
-
-
-
 //Instance methods
 export interface IUser extends Document {
   _id: Types.ObjectId;
   email: string;
   fullName: string;
   avatar?: string;
-  city: string;
   password: string;
   passwordChangedAt?: Date;
   passwordResetOtp?: string;
   passwordResetExpiry?: Date;
   isOtpVerified?: boolean;
-  isEmailVerified: boolean;
+  verification: {
+    emailVerifiedAt: Date | null;
+    phoneVerifiedAt: Date | null;
+  },
   verificationOtp?: string;
   verificationOtpExpiry?: Date;
   role: TUserRole;

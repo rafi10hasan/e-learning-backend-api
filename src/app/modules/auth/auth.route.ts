@@ -48,6 +48,7 @@ authRouter.post(
   validateRequest({
     body: authValidationZodSchema.resetPasswordOtpAgainSchema,
   }),
+  otpRateLimiter,
   authController.sendResetPasswordOtpAgain,
 );
 
@@ -56,6 +57,7 @@ authRouter.post(
   validateRequest({
     body: authValidationZodSchema.forgotPasswordSchema,
   }),
+  otpRateLimiter,
   authController.requestPasswordReset,
 );
 
@@ -77,7 +79,7 @@ authRouter.post(
 
 authRouter.post(
   '/change-password',
-  authMiddleware(USER_ROLE.PASSENGER, USER_ROLE.DRIVER, USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+  authMiddleware(USER_ROLE.STUDENT, USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
   validateRequest({
     body: authValidationZodSchema.changePasswordSchema,
   }),

@@ -38,7 +38,7 @@ const loginWithCredential = async (credential: TLoginPayload) => {
   const isPasswordMatch = await user.isPasswordMatched(password);
   if (!isPasswordMatch) throw new BadRequestError(`password didn't match`);
 
-  if (!user.isEmailVerified) {
+  if (!user.verification.emailVerifiedAt) {
     await sendVerificationOtp(user, email);
     return {
       status: 'UNVERIFIED'
@@ -96,7 +96,7 @@ const loginWithOAuth = async (credential: socialLoginPayload) => {
     if (!user) {
       throw new BadRequestError('Failed to create user');
     }
-    user.isEmailVerified = true;
+    user.verification.emailVerifiedAt = new Date();
     user.isActive = true;
     user.isSocialLogin = true;
     user.avatar = picture;
@@ -140,7 +140,7 @@ const verifyAccountByOtp = async (email: string, otp: string, fcmToken?: string)
     throw new BadRequestError('User not found!');
   }
 
-  if (user.isEmailVerified) {
+  if (user.verification.emailVerifiedAt) {
     throw new BadRequestError('This account is already verified!');
   }
 
@@ -160,7 +160,7 @@ const verifyAccountByOtp = async (email: string, otp: string, fcmToken?: string)
 
   console.log("fcmToken", fcmToken)
   // Mark user as verified
-  user.isEmailVerified = true;
+  user.verification.emailVerifiedAt = new Date();
   user.verificationOtp = undefined;
   user.verificationOtpExpiry = undefined;
 
@@ -189,7 +189,7 @@ const resendEmailVerificationOtpAgain = async (email: string) => {
     throw new UnauthorizedError('User not found!');
   }
 
-  if (user.isEmailVerified) {
+  if (user.verification.emailVerifiedAt) {
     throw new BadRequestError('This account is already verified!');
   }
 

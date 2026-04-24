@@ -17,7 +17,7 @@ export const filterQuestions = async (input: QuestionFilterInput) => {
 
     let subjectsArray: string[] = [];
     let departmentsArray: string[] = [];
-    
+
     if (subject) {
         subjectsArray = Array.isArray(subject) ? (subject as string[]) : [subject as string];
     }
@@ -25,7 +25,7 @@ export const filterQuestions = async (input: QuestionFilterInput) => {
     if (department) {
         departmentsArray = Array.isArray(department) ? (department as string[]) : [department as string];
     }
-    console.log({department})
+    console.log({ department })
     // ── semi_matura / matura ──────────────────────────────────
     if (examType === "semi_matura" || examType === "matura") {
         if (!subjectsArray || subjectsArray.length === 0) {
@@ -53,13 +53,13 @@ export const filterQuestions = async (input: QuestionFilterInput) => {
             throw new BadRequestError(`Subjects not found: ${notFound.join(", ")}`);
         }
 
-        const subjectIds = foundSubjects.map((s) => s._id);
-        console.log({ subjectIds })
+        const subjectss = foundSubjects.map((s) => s._id);
+        console.log({ subjectss })
         // subject IDs দিয়ে questions fetch
         // source: archive | both — test archive এর জন্য
         const query: Record<string, unknown> = {
             examType,
-            subjectId: { $in: subjectIds },
+            subjects: { $in: subjectss },
             source: { $in: ["archive", "both"] },
             year: year ? Number(year) : undefined
         };
@@ -74,8 +74,8 @@ export const filterQuestions = async (input: QuestionFilterInput) => {
         if (!departmentsArray || departmentsArray.length === 0) {
             throw new BadRequestError("At least one department is required for provime");
         }
-        console.log({departmentsArray})
-        // departmentId valid কিনা check
+        console.log({ departmentsArray })
+        // departments valid কিনা check
         const foundDepartments = await Department.find({
             name: { $in: departmentsArray },
             examType,
@@ -94,13 +94,13 @@ export const filterQuestions = async (input: QuestionFilterInput) => {
             throw new BadRequestError(`Departments not found: ${notFound.join(", ")}`);
         }
 
-        const departmentIds = foundDepartments.map((d) => d._id);
-        console.log({ departmentIds })
+        const departmentss = foundDepartments.map((d) => d._id);
+        console.log({ departmentss })
         // department IDs দিয়ে questions fetch
         // source: archive | both — test archive এর জন্য
         const query: Record<string, unknown> = {
             examType,
-            departmentId: { $in: departmentIds },
+            departments: { $in: departmentss },
             source: { $in: ["archive", "both"] },
             year: year ? Number(year) : undefined
         };
@@ -124,9 +124,9 @@ export const filterQuestions = async (input: QuestionFilterInput) => {
 //     const [total, questions] = await Promise.all([
 //         Question.countDocuments(query),
 //         Question.find(query)
-//             .populate("subjectId", "name slug")
-//             .populate("departmentId", "name slug")
-//             .populate("passageId", "passageCode title content")
+//             .populate("subjects", "name slug")
+//             .populate("departments", "name slug")
+//             .populate("passage", "passageCode title content")
 //             .skip(skip)
 //             .limit(limit)
 //             .sort({ createdAt: -1 }),

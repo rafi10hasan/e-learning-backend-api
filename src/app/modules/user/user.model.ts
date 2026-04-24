@@ -53,6 +53,17 @@ export const userSchema = new mongoose.Schema<IUser>(
     city: {
       type: String,
     },
+
+    verification: {
+      emailVerifiedAt: {
+        type: Date,
+        default: null
+      },
+      phoneVerifiedAt: {
+        type: Date,
+        default: null
+      }
+    },
     isEmailVerified: {
       type: Boolean,
       default: false,
