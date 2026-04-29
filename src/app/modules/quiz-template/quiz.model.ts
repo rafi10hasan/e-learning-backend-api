@@ -1,13 +1,13 @@
-import mongoose, { Document, Schema, Types } from "mongoose";
-import { IQuizTemplate, ISubjectFilter } from "./quiz.interface";
+import mongoose, { Schema } from "mongoose";
 import { EXAM_TYPES } from "../../../interfaces";
 import { QUIZ_STATUS, QUIZ_TYPES } from "./quiz.constant";
+import { IQuizTemplate, ISubjectFilter } from "./quiz.interface";
 
 
 
 const SubjectFilterSchema = new Schema<ISubjectFilter>(
   {
-    subjectId: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
+    subjects: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
     questionCount: { type: Number, required: true, min: 1 },
   },
   { _id: false }

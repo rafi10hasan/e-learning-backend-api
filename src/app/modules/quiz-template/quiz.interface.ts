@@ -1,9 +1,9 @@
 import { Types } from "mongoose";
-import { TQuizTypes } from "./quiz.constant";
 import { TExamTypes } from "../../../interfaces";
+import { TQuizTypes } from "./quiz.constant";
 
 export interface ISubjectFilter {
-  subjectId: Types.ObjectId;
+  subjects: Types.ObjectId;
   questionCount: number;
 }
 

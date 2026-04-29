@@ -2,15 +2,21 @@ import { Document, Types } from "mongoose";
 import { TExamTypes } from "../../../interfaces";
 
 
+export interface IQuestionRange {
+  from: number;
+  to: number;
+}
+
 export interface IPassage extends Document {
-  passage_code: string;
+  passageCode: string;
   title: string;
   content: string;
   examType: TExamTypes;
   passageImageUrl?: string;
-  subjectId: Types.ObjectId | null;
-  facultyId: Types.ObjectId | null;
-  departmentId: Types.ObjectId | null;
+  questionRange: IQuestionRange;
+  subject: Types.ObjectId | null;
+  faculty: Types.ObjectId | null;
+  departments: Types.ObjectId[] | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

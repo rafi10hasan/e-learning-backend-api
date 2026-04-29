@@ -26,7 +26,7 @@ const createSubject = async (payload: ISubject) => {
 
     const result = await Subject.create(subjectData);
     return {
-        subjectId: result._id,
+        subjects: result._id,
         name: result.name,
         slug: result.slug,
         examType: result.examType
@@ -44,7 +44,7 @@ const getAllSubjects = async (query: TGetSubjectQueryPayload) => {
     const result = await Subject.find(filter).sort({ createdAt: -1 });
 
     const formattedResult = result.map(subject => ({
-        subjectId: subject._id,
+        subjects: subject._id,
         name: subject.name,
         slug: subject.slug,
     }));

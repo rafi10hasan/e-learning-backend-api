@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
-import { QUERSTION_STATUS, SOURCE_TYPES,} from "./question.constant";
-import { IOption, IQuestion } from "./question.interface";
 import { ACCESS_TYPES, EXAM_TYPES, TEST_TYPES } from "../../../interfaces";
+import { QUERSTION_DIFFICULTY, QUERSTION_STATUS, SOURCE_TYPES, } from "./question.constant";
+import { IOption, IQuestion } from "./question.interface";
 
 
 
@@ -18,10 +18,10 @@ const QuestionSchema = new Schema<IQuestion>(
             required: true,
         },
         year: { type: Number, required: true },
-        subjectId: { type: Schema.Types.ObjectId, ref: "Subject" },
-        facultyId: { type: Schema.Types.ObjectId, ref: "Faculty" },
-        departmentId: { type: Schema.Types.ObjectId, ref: "Department" },
-        passageId: { type: Schema.Types.ObjectId, ref: "Passage" },
+        subject: { type: Schema.Types.ObjectId, ref: "Subject" },
+        faculty: { type: Schema.Types.ObjectId, ref: "Faculty" },
+        departments: [{ type: Schema.Types.ObjectId, ref: "Department" }],
+        passage: { type: Schema.Types.ObjectId, ref: "Passage" },
         source: {
             type: String,
             enum: Object.values(SOURCE_TYPES),
@@ -42,6 +42,11 @@ const QuestionSchema = new Schema<IQuestion>(
         options: { type: [OptionSchema], required: true },
         correctOptionIndex: { type: Number, required: true },
         explanation: { type: String },
+        difficultyLevel: {
+            type: String,
+            enum: Object.values(QUERSTION_DIFFICULTY),
+            default: QUERSTION_DIFFICULTY.EASY,
+        },
         status: {
             type: String,
             enum: Object.values(QUERSTION_STATUS),
@@ -55,9 +60,9 @@ const QuestionSchema = new Schema<IQuestion>(
     },
 );
 
-QuestionSchema.index({ examType: 1, year: 1, subjectId: 1 });
+QuestionSchema.index({ examType: 1, year: 1, subject: 1 });
 QuestionSchema.index({ source: 1, status: 1 });
-QuestionSchema.index({ facultyId: 1, departmentId: 1 });
+QuestionSchema.index({ faculty: 1, departments: 1 });
 
 const Question = mongoose.model<IQuestion>("Question", QuestionSchema);
 

@@ -4,7 +4,8 @@ export interface IDepartment extends Document {
     name: string;
     slug: string;
     examType: 'provime'
-    facultyId: Types.ObjectId;
+    subjects: Types.ObjectId[];
+    faculty: Types.ObjectId;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;

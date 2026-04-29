@@ -16,11 +16,11 @@ const createTest = asyncHandler(async (req: Request, res: Response) => {
 
 const getAllOfficialTestsIntoDb = asyncHandler(async (req: Request, res: Response) => {
 
-  const { examType, departmentId, page, limit } = req.query;
+  const { examType, departments, page, limit } = req.query;
   const result = await testService.getAllOfficialTests(
     {
       category: examType as string,
-      departmentId: departmentId as string,
+      departments: departments as string,
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 20,
     } as any);
@@ -34,10 +34,10 @@ const getAllOfficialTestsIntoDb = asyncHandler(async (req: Request, res: Respons
 });
 
 const getAllAdditionalTestsIntoDb = asyncHandler(async (req: Request, res: Response) => {
-  const { category, departmentId, page, limit } = req.query;
+  const { category, departments, page, limit } = req.query;
   const result = await testService.getAllAdditionalTests({
     category: category as string,
-    departmentId: departmentId as string,
+    departments: departments as string,
     page: page ? Number(page) : 1,
     limit: limit ? Number(limit) : 20,
   } as any);

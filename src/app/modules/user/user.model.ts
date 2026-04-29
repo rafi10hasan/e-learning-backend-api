@@ -1,63 +1,43 @@
 import bcrypt from 'bcrypt';
-import mongoose from 'mongoose';
-import validator from 'validator';
-import { PROVIDER, USER_ROLE } from './user.constant';
+import mongoose, { Schema } from 'mongoose';
+import config from '../../../config';
+import { PROVIDER, USER_ROLE, USER_STATUS } from './user.constant';
 import { IUser, IUserModel } from './user.interface';
 
 
-
-export const userSchema = new mongoose.Schema<IUser>(
+export const userSchema = new Schema<IUser>(
   {
-    fullName: {
-      type: String,
-      required: [true, 'Full name is required'],
-      trim: true,
-      minlength: [3, 'Full name must be at least 3 characters'],
-      maxlength: [30, 'Full name cannot exceed 30 characters'],
-      validate: {
-        validator: function (value: string) {
-          return /^[A-Za-z\s]+$/.test(value);
-        },
-        message: 'Full name can contain only letters and spaces',
-      },
-    },
-
     email: {
       type: String,
-      required: [true, 'Email is required!'],
+      required: true,
       lowercase: true,
       trim: true,
-      validate: {
-        validator: (value: string) => validator.isEmail(value),
-        message: (props: { value: string }) => `${props.value} is not a valid email!`,
-      },
     },
-
-    password: {
+    fullName: {
       type: String,
-      trim: true,
       required: true,
-      minlength: [8, 'Password must be at least 8 characters'],
-      validate: {
-        validator: function (value) {
-          return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(value);
-        },
-        message: 'Password must contain at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character',
-      },
+      trim: true,
     },
     avatar: {
       type: String,
-      default: '',
     },
-
-    city: {
+    password: {
       type: String,
+      required: false,
     },
-    isEmailVerified: {
-      type: Boolean,
-      default: false,
+    passwordChangedAt: {
+      type: Date,
+      select: false,
     },
-
+    verification: {
+      emailVerifiedAt: { type: Date, default: null },
+      phoneVerifiedAt: { type: Date, default: null },
+    },
+    role: {
+      type: String,
+      enum: Object.values(USER_ROLE),
+      default: USER_ROLE.STUDENT,
+    },
     provider: {
       type: String,
       enum: Object.values(PROVIDER),
@@ -66,56 +46,29 @@ export const userSchema = new mongoose.Schema<IUser>(
       type: Boolean,
       default: false,
     },
-    verificationOtp: {
+    status: {
       type: String,
+      enum: Object.values(USER_STATUS),
+      default: USER_STATUS.PENDING,
     },
-    verificationOtpExpiry: {
+    disabledAt: {
       type: Date,
+      default: null
     },
-
-    passwordResetOtp: {
-      type: String,
-    },
-    passwordResetExpiry: {
+    deletedAt: {
       type: Date,
-    },
-    isOtpVerified: {
-      type: Boolean,
-    },
-    role: {
-      type: String,
-      enum: Object.values(USER_ROLE),
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    passwordChangedAt: { type: Date },
-    isDeleted: {
-      type: Boolean,
-      default: false,
+      default: null,
     },
   },
-  {
-    timestamps: true,
-    versionKey: false,
-  },
+  { timestamps: true }
 );
 
 userSchema.pre('save', async function () {
-  const saltRounds = 8;
-
+   const salt = await bcrypt.genSalt(Number(config.salt_rounds));
   if (this.isModified('password')) {
-    this.password = await bcrypt.hash(this.password, saltRounds);
+    this.password = await bcrypt.hash(this.password, salt);
   }
 
-  if (this.isModified('verificationOtp') && this.verificationOtp) {
-    this.verificationOtp = await bcrypt.hash(this.verificationOtp, saltRounds);
-  }
-
-  if (this.isModified('passwordResetOtp') && this.passwordResetOtp) {
-    this.passwordResetOtp = await bcrypt.hash(this.passwordResetOtp, saltRounds);
-  }
 });
 
 // isUserExistsByEmail
@@ -128,33 +81,15 @@ userSchema.methods.isPasswordMatched = async function (plainTextPassword: string
   return await bcrypt.compare(plainTextPassword, this.password);
 };
 
-userSchema.methods.isVerificationOtpMatched = async function (plainTextOtp: string): Promise<boolean> {
-  return await bcrypt.compare(plainTextOtp, this.verificationOtp);
-};
-
-userSchema.methods.isResetPasswordOtpMatched = async function (plainTextOtp: string): Promise<boolean> {
-  return await bcrypt.compare(plainTextOtp, this.passwordResetOtp);
-};
-
 // isJWTIssuedBeforePasswordChanged
 userSchema.methods.isJWTIssuedBeforePasswordChanged = function (jwtIssuedTimestamp: number): boolean {
   const passwordChangedTime = new Date(this.passwordChangedAt).getTime() / 1000;
   return passwordChangedTime > jwtIssuedTimestamp;
 };
 
-userSchema.set('toJSON', {
-  versionKey: false,
-  transform: (_doc, ret) => {
-    delete ret.password;
-    return ret;
-  },
-});
 
-userSchema.index({ "accountId": 1 })
 userSchema.index({ "email": 1 })
 userSchema.index({ "fullName": 1 })
-userSchema.index({ "subscription.currentPlan": 1 })
-
 
 const User = mongoose.model<IUser, IUserModel>('User', userSchema);
 export default User;

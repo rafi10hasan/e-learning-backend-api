@@ -1,12 +1,12 @@
-import mongoose, { Schema} from "mongoose";
-import { IPassage } from "./passage.interface";
+import mongoose, { Schema } from "mongoose";
 import { EXAM_TYPES } from "../../../interfaces";
+import { IPassage } from "./passage.interface";
 
 
 
 const PassageSchema = new Schema<IPassage>(
   {
-    passage_code: { type: String, required: true, unique: true },
+    passageCode: { type: String, required: true, unique: true },
     title: { type: String, required: true },
     content: { type: String, required: true },
     examType: {
@@ -14,11 +14,17 @@ const PassageSchema = new Schema<IPassage>(
       enum: Object.values(EXAM_TYPES),
       required: true,
     },
-    passageImageUrl: { type: String, default: null},
-    subjectId: { type: Schema.Types.ObjectId, ref: "Subject" },
+    passageImageUrl: { type: String, default: null },
+    subject: { type: Schema.Types.ObjectId, ref: "Subject" },
+    faculty: { type: Schema.Types.ObjectId, ref: "Faculty" },
+    departments: [{ type: Schema.Types.ObjectId, ref: "Department" }],
+    questionRange: {
+      from: { type: Number, required: true },
+      to: { type: Number, required: true },
+    },
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: { createdAt: "created_at", updatedAt: "updated_at" } }
+  { timestamps: true, versionKey: false }
 );
 
 const Passage = mongoose.model<IPassage>("Passage", PassageSchema);

@@ -3,8 +3,8 @@ import { Router } from 'express';
 import authMiddleware from '../../middlewares/auth.middleware';
 import { validateRequest } from '../../middlewares/request.validator';
 import { USER_ROLE } from '../user/user.constant';
-import departmentValidationZodSchema from './department.zod';
 import { departmentController } from './department.controller';
+import departmentValidationZodSchema from './department.zod';
 
 
 
@@ -12,7 +12,7 @@ import { departmentController } from './department.controller';
 const departmentRouter = Router();
 
 departmentRouter.post(
-    '/add/:facultyId',
+    '/add/:faculty',
     authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
     validateRequest(
         {
@@ -24,7 +24,7 @@ departmentRouter.post(
 
 
 departmentRouter.get(
-    '/retrieve/:facultyId',
+    '/retrieve/:faculty',
     authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
     departmentController.getAllDepartments,
 );

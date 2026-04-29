@@ -5,7 +5,7 @@ import QuizTemplate from "./quiz.model";
 
 
 interface SubjectFilter {
-  subjectId: string;
+  subjects: string;
   questionCount: number;
 }
 
@@ -39,14 +39,14 @@ const validateQuestionAvailability = async (
       const count = await Question.countDocuments({
         examType,
         year,
-        subjectId: filter.subjectId,
+        subjects: filter.subjects,
         source: { $in: ["practice", "both"] },
         status: "published",
         isActive: true,
       });
 
       return {
-        subjectId: filter.subjectId,
+        subjects: filter.subjects,
         required: filter.questionCount,
         available: count,
         isEnough: count >= filter.questionCount,
@@ -104,14 +104,14 @@ const getAllTemplates = async (
   if (filter.status) query.status = filter.status;
 
   return QuizTemplate.find(query)
-    .populate("subjectFilters.subjectId", "name slug isElective")
+    .populate("subjectFilters.subjects", "name slug isElective")
     .sort({ year: -1 });
 };
 
 // ─── Get By Id ────────────────────────────────────────────────
 const getTemplateById = async (id: string): Promise<IQuizTemplate> => {
   const template = await QuizTemplate.findById(id).populate(
-    "subjectFilters.subjectId",
+    "subjectFilters.subjects",
     "name slug isElective"
   );
   if (!template || !template.isActive) {
@@ -133,13 +133,13 @@ const getTemplateById = async (id: string): Promise<IQuizTemplate> => {
 //       Question.find({
 //         examType: template.examType,
 //         year: template.year,
-//         subjectId: filter.subjectId,
+//         subjects: filter.subjects,
 //         source: { $in: ["practice", "both"] },
 //         status: "published",
 //         isActive: true,
 //       })
 //         .limit(filter.questionCount)
-//         .populate("passageId", "passageCode title content")
+//         .populate("passage", "passageCode title content")
 //     )
 //   );
 
@@ -160,9 +160,9 @@ const getTemplateById = async (id: string): Promise<IQuizTemplate> => {
 //     const plan = (subscription.planId as { slug: string }).slug;
 //     const hasMatura = plan === "matura" || plan === "full_access";
 
-//     if (hasMatura && subscription.electiveSubjectId) {
+//     if (hasMatura && subscription.electivesubjects) {
 //       electiveQuestions = await Question.find({
-//         subjectId: subscription.electiveSubjectId,
+//         subjects: subscription.electivesubjects,
 //         examType: template.examType,
 //         year: template.year,
 //         source: { $in: ["practice", "both"] },
@@ -170,7 +170,7 @@ const getTemplateById = async (id: string): Promise<IQuizTemplate> => {
 //         isActive: true,
 //       })
 //         .limit(template.electiveQuestionCount)
-//         .populate("passageId", "passageCode title content");
+//         .populate("passage", "passageCode title content");
 //     }
 //   }
 
@@ -199,7 +199,7 @@ const publishTemplate = async (id: string): Promise<IQuizTemplate> => {
     template.examType,
     template.year,
     template.subjectFilters.map((f) => ({
-      subjectId: f.subjectId.toString(),
+      subjects: f.subjects.toString(),
       questionCount: f.questionCount,
     }))
   );

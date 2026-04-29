@@ -14,14 +14,14 @@ const createTestSchema = z.object({
     testType: z.enum([TEST_TYPES.OFFICIAL, TEST_TYPES.ADDITIONAL], { message: "Test type must be official or additional" }),
     access: z.enum([ACCESS_TYPES.FREE, ACCESS_TYPES.PREMIUM], { message: "Access must be free or premium" }).default("free"),
     totalSubjects: z.coerce.number({ message: "Total subjects must be a number" }),
-    facultyId: z.string({ message: "Faculty ID must be a string" }).optional(),
+    faculty: z.string({ message: "Faculty ID must be a string" }).optional(),
     questionIds: z.array(z.string({ message: "Question ID must be a string" })),
-    departmentIds: z.array(z.string({ message: "Department ID must be a string" })).optional(),
-    subjectIds: z.array(z.string({ message: "Subject ID must be a string" })).optional(),
+    departmentss: z.array(z.string({ message: "Department ID must be a string" })).optional(),
+    subjectss: z.array(z.string({ message: "Subject ID must be a string" })).optional(),
 }).superRefine((data, ctx) => {
 
     if (data.examType === EXAM_TYPES.SEMIMATURE || data.examType === EXAM_TYPES.MATURE) {
-        if (!data.subjectIds || data.subjectIds.length === 0) {
+        if (!data.subjectss || data.subjectss.length === 0) {
             ctx.addIssue({
                 code: 'custom',
                 maximum: 1,
@@ -31,7 +31,7 @@ const createTestSchema = z.object({
                 message: "Subject ID is required when exam type is semi_matura or matura",
             });
         }
-        if (data.departmentIds && data.departmentIds.length > 0) {
+        if (data.departmentss && data.departmentss.length > 0) {
             ctx.addIssue({
                 code: 'custom',
                 maximum: 1,
@@ -41,7 +41,7 @@ const createTestSchema = z.object({
                 message: "Department ID is not required when exam type is semi_matura or matura",
             });
         }
-        if (data.facultyId) {
+        if (data.faculty) {
             ctx.addIssue({
                 code: 'custom',
                 maximum: 1,
@@ -54,7 +54,7 @@ const createTestSchema = z.object({
     }
 
     if (data.examType === EXAM_TYPES.ENTRANCE_EXAM) {
-        if (!data.facultyId) {
+        if (!data.faculty) {
             ctx.addIssue({
                 code: 'custom',
                 maximum: 1,
@@ -64,7 +64,7 @@ const createTestSchema = z.object({
                 message: "Faculty ID is required when exam type is entrance exam",
             });
         }
-        if (!data.departmentIds || data.departmentIds.length === 0) {
+        if (!data.departmentss || data.departmentss.length === 0) {
             ctx.addIssue({
                 code: 'custom',
                 maximum: 1,
@@ -75,7 +75,7 @@ const createTestSchema = z.object({
             });
         }
 
-        if (data.subjectIds && data.subjectIds.length > 0) {
+        if (data.subjectss && data.subjectss.length > 0) {
             ctx.addIssue({
                 code: 'custom',
                 maximum: 1,

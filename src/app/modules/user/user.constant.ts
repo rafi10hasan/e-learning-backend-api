@@ -29,10 +29,16 @@ export const SUBSCRIPTION_STATUS = {
   REJECTED: 'rejected'
 } as const;
 
+export const USER_STATUS = {
+  PENDING: 'pending',
+  ACTIVE: 'active',
+  BLOCKED: 'blocked',
+  DISABLED: 'disabled'
+}
 export type TSubscriptionPlan = (typeof SUBSCRIPTION_PLAN)[keyof typeof SUBSCRIPTION_PLAN];
 export type TSubscriptionMode = (typeof SUBSCRIPTION_MODE)[keyof typeof SUBSCRIPTION_MODE];
 export type TSubscriptionStatus = (typeof SUBSCRIPTION_STATUS)[keyof typeof SUBSCRIPTION_STATUS];
-
+export type TUserStatus = (typeof USER_STATUS)[keyof typeof USER_STATUS];
 
 export const BADGE = {
   FREE: 'free',

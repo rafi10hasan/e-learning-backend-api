@@ -54,3 +54,9 @@ export class ServiceUnavailableError extends CustomError {
     super(message, StatusCodes.SERVICE_UNAVAILABLE);
   }
 }
+
+export class InternalServerError extends CustomError {
+  constructor(message = 'Internal Server Error') {
+    super(message, StatusCodes.INTERNAL_SERVER_ERROR);
+  }
+}

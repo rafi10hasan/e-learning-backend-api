@@ -4,11 +4,12 @@ import config from '../../../config';
 import otpMailTemplate from '../../../mailTemplate/otpMailTemplate';
 import { generateOTP } from '../../../utilities/generateOtp';
 import sendMail from '../../../utilities/sendEmail';
-import { BadRequestError, UnauthorizedError } from '../../errors/request/apiError';
+import { BadRequestError, InternalServerError, UnauthorizedError } from '../../errors/request/apiError';
 import { SessionModel } from '../session/session.model';
 
 import jwtHelpers from '../../../helpers/jwtHelpers';
-import { USER_ROLE } from '../user/user.constant';
+import OtpToken from '../otpToken/otp.token.model';
+import { USER_ROLE, USER_STATUS } from '../user/user.constant';
 import { IUser } from '../user/user.interface';
 import { userRepository } from '../user/user.repository';
 import { jwtPayload, socialLoginPayload } from './auth.interface';
@@ -19,16 +20,21 @@ const googleClient = new OAuth2Client();
 
 // login with credential
 const loginWithCredential = async (credential: TLoginPayload) => {
-  const { email, password} = credential;
+  const { email, password } = credential;
 
   const user = await userRepository.findByEmail(email);
   if (!user) throw new UnauthorizedError('user not found with this email');
 
-  if (user.isDeleted) {
-    throw new UnauthorizedError('Unauthorized Access');
+  console.log(user)
+  if (user.deletedAt) {
+    throw new UnauthorizedError('This account has been deleted. if you want to restore this account, create account with same email again');
   }
-  if (!user.isActive) {
-    throw new UnauthorizedError('Unauthorized Access');
+  if ([USER_STATUS.BLOCKED].includes(user.status)) {
+    throw new UnauthorizedError('user has been blocked. Contact support for more info');
+  }
+
+  if (user.status === USER_STATUS.PENDING) {
+    throw new UnauthorizedError('This account is pending verification from admin.');
   }
 
   if (!user.password && user.isSocialLogin) {
@@ -38,11 +44,16 @@ const loginWithCredential = async (credential: TLoginPayload) => {
   const isPasswordMatch = await user.isPasswordMatched(password);
   if (!isPasswordMatch) throw new BadRequestError(`password didn't match`);
 
-  if (!user.isEmailVerified) {
-    await sendVerificationOtp(user, email);
+  if (!user.verification.emailVerifiedAt) {
+    await sendVerificationOtp(user._id, email);
     return {
       status: 'UNVERIFIED'
     };
+  }
+
+  if (user.status === USER_STATUS.DISABLED) {
+    user.status = USER_STATUS.ACTIVE;
+    user.disabledAt = null;
   }
 
   await user.save()
@@ -50,15 +61,18 @@ const loginWithCredential = async (credential: TLoginPayload) => {
   const JwtPayload: jwtPayload = {
     id: user._id.toString(),
     role: user.role,
+    isRemembered: credential.isRemembered || false,
   };
   const tokens = await jwtHelpers.generateTokens(JwtPayload);
 
   return tokens;
 };
 
+
 // authentication with Google
 const loginWithOAuth = async (credential: socialLoginPayload) => {
   const { provider, token } = credential;
+
   let payload;
   if (provider === 'google') {
     const ticket = await googleClient.verifyIdToken({
@@ -96,8 +110,8 @@ const loginWithOAuth = async (credential: socialLoginPayload) => {
     if (!user) {
       throw new BadRequestError('Failed to create user');
     }
-    user.isEmailVerified = true;
-    user.isActive = true;
+    user.verification.emailVerifiedAt = new Date();
+    user.status = USER_STATUS.ACTIVE;
     user.isSocialLogin = true;
     user.avatar = picture;
     user.role = USER_ROLE.STUDENT;
@@ -108,10 +122,10 @@ const loginWithOAuth = async (credential: socialLoginPayload) => {
     };
   }
 
-  if (user.isDeleted) {
-    throw new UnauthorizedError('Unauthorized Access');
+  if (user.deletedAt) {
+    throw new UnauthorizedError('This account has been deleted. if you want to restore this account, create account with same email again');
   }
-  if (!user.isActive) {
+  if (user.status !== USER_STATUS.ACTIVE) {
     throw new UnauthorizedError('Unauthorized Access');
   }
 
@@ -140,29 +154,28 @@ const verifyAccountByOtp = async (email: string, otp: string, fcmToken?: string)
     throw new BadRequestError('User not found!');
   }
 
-  if (user.isEmailVerified) {
+  if (user.verification.emailVerifiedAt) {
     throw new BadRequestError('This account is already verified!');
   }
 
-  const isVerificationOtpMatched = await user.isVerificationOtpMatched(otp);
+  const otpToken = await OtpToken.findOne({ userId: user._id, type: 'email_verification' });
+
+  if (!otpToken) {
+    throw new BadRequestError('OTP not found. Please request a fresh Otp');
+  }
+  const isVerificationOtpMatched = await otpToken.isVerificationOtpMatched(otp);
 
   // If OTP is invalid, throw error
   if (!isVerificationOtpMatched) {
-    throw new BadRequestError('OTP is invalid');
+    throw new BadRequestError('OTP is incorrect');
   }
 
-  // Check if OTP is expired
-  const now = new Date();
-  if (!user.verificationOtpExpiry || user.verificationOtpExpiry < now) {
-    throw new BadRequestError('OTP has expired. Please request a fresh Otp!');
-  }
+  // console.log("fcmToken", fcmToken)
 
-
-  console.log("fcmToken", fcmToken)
   // Mark user as verified
-  user.isEmailVerified = true;
-  user.verificationOtp = undefined;
-  user.verificationOtpExpiry = undefined;
+  user.verification.emailVerifiedAt = new Date();
+
+  await OtpToken.deleteOne({ userId: user._id, type: 'email_verification' });
 
   await user.save();
 
@@ -171,8 +184,8 @@ const verifyAccountByOtp = async (email: string, otp: string, fcmToken?: string)
     role: user.role,
   };
 
-  const tokens = await jwtHelpers.generateTokens(JwtPayload);
   // Generate access and refresh tokens
+  const tokens = await jwtHelpers.generateTokens(JwtPayload);
 
   // Return tokens to client
   return {
@@ -189,29 +202,30 @@ const resendEmailVerificationOtpAgain = async (email: string) => {
     throw new UnauthorizedError('User not found!');
   }
 
-  if (user.isEmailVerified) {
+  // Guard: email might be null (social login users)
+  if (!user.email) {
+    throw new BadRequestError('No email address associated with this account.');
+  }
+
+  if (user.verification.emailVerifiedAt) {
     throw new BadRequestError('This account is already verified!');
   }
 
-  const now = new Date();
+  // If OTP exists in DB, TTL guarantees it's still valid (expired ones are auto-deleted)
+  const existingOtp = await OtpToken.findOne({ userId: user._id, type: 'email_verification' });
 
-  // Check if OTP is expired or missing
-  const isExpired = !user.verificationOtpExpiry || user.verificationOtpExpiry < now;
-
-  if (!isExpired) {
-    throw new BadRequestError('Current OTP is still valid.');
+  if (existingOtp) {
+    throw new BadRequestError('Current OTP is still valid. Please wait before requesting a new one.');
   }
 
-  // Generate new OTP
-  const verificationOtp = generateOTP();
+  // Validate config before proceeding
   const expiresInMinutes = Number(config.otp_expires_in);
+  if (isNaN(expiresInMinutes) || expiresInMinutes <= 0) {
+    throw new InternalServerError('OTP expiry configuration is invalid.');
+  }
 
-  // Save OTP + expiry
-  user.verificationOtp = verificationOtp;
-  user.verificationOtpExpiry = new Date(Date.now() + expiresInMinutes * 60 * 1000);
-  await user.save();
+  const verificationOtp = generateOTP();
 
-  // Send email
   const mailOptions = {
     from: config.gmail_app_user,
     to: user.email,
@@ -219,7 +233,77 @@ const resendEmailVerificationOtpAgain = async (email: string) => {
     html: otpMailTemplate(verificationOtp, expiresInMinutes),
   };
 
+  // Send mail first — if it fails, OTP won't be saved to DB
   await sendMail(mailOptions);
+
+  // If OTP save fails after mail is sent, user can retry resend
+  try {
+    // Atomic upsert — prevents duplicate OTP records on race condition (double-click resend)
+    await OtpToken.deleteOne({ userId: user._id, type: 'email_verification' });
+
+    // Create new — pre('save') fires automatically and hashes OTP
+    await OtpToken.create({
+      userId: user._id,
+      type: 'email_verification',
+      otpHash: verificationOtp,  // plain OTP — hook will hash it
+      expiresAt: new Date(Date.now() + expiresInMinutes * 60 * 1000),
+    });
+  } catch {
+    // Mail was sent but OTP save failed — user can retry resend
+    throw new InternalServerError('OTP sent but failed to save. Please try resending.');
+  }
+
+  return null;
+};
+
+
+// forget password
+const forgotPassword = async (email: string) => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await userRepository.findByEmail(normalizedEmail, "_id email");
+
+  if (!user) {
+    throw new UnauthorizedError('User not found!');
+  }
+
+  if (user.isSocialLogin && !user.password) {
+    throw new BadRequestError("Social login users don't have a password to reset!");
+  }
+
+  // Validate config first before proceeding
+  const expiresInMinutes = Number(config.otp_expires_in);
+  if (isNaN(expiresInMinutes) || expiresInMinutes <= 0) {
+    throw new InternalServerError('OTP expiry configuration is invalid.');
+  }
+
+  // If OTP exists in DB, TTL guarantees it's still valid (expired ones are auto-deleted)
+  const existingOtp = await OtpToken.findOne({ userId: user._id, type: 'password_reset' });
+  if (existingOtp) {
+    throw new BadRequestError('Current OTP is still valid. Please wait before requesting a new one.');
+  }
+
+  const otp = generateOTP();
+
+  // Create OTP first
+  await OtpToken.create({
+    userId: user._id, // ← was missing
+    type: 'password_reset',
+    otpHash: otp,
+    expiresAt: new Date(Date.now() + expiresInMinutes * 60 * 1000),
+  });
+
+  // Mail fail hole OTP delete kore dao
+  try {
+    await sendMail({
+      from: config.gmail_app_user,
+      to: normalizedEmail, // normalized email use koro
+      subject: 'Password Reset Verification Code',
+      html: otpMailTemplate(otp, expiresInMinutes),
+    });
+  } catch {
+    await OtpToken.deleteOne({ userId: user._id, type: 'password_reset' });
+    throw new BadRequestError('Failed to send reset email. Please try again.');
+  }
 
   return null;
 };
@@ -227,133 +311,118 @@ const resendEmailVerificationOtpAgain = async (email: string) => {
 // reset password otp again
 const resetPasswordOtpAgain = async (email: string) => {
   const normalizedEmail = email.trim().toLowerCase();
-
-  const user = await userRepository.findByEmail(normalizedEmail, ['passwordResetOtp', 'passwordResetExpiry', 'email']);
+  const user = await userRepository.findByEmail(normalizedEmail, '_id email');
 
   if (!user) {
     throw new UnauthorizedError('User not found!');
   }
 
-  // If no OTP was ever generated → user never initiated forgot password
-  if (!user.passwordResetExpiry) {
-    throw new BadRequestError('Please request a forget password before attempting to a new OTP.');
+  if (!user.email) {
+    throw new BadRequestError('No email address associated with this account.');
   }
 
-  const now = new Date();
-
-  // If OTP is still valid → do not resend
-  if (user.passwordResetExpiry > now) {
-    throw new BadRequestError('Current OTP is still valid.');
-  }
-
-  // Generate new OTP
-  const otp = generateOTP();
+  // Validate config first
   const expiresInMinutes = Number(config.otp_expires_in);
+  if (isNaN(expiresInMinutes) || expiresInMinutes <= 0) {
+    throw new InternalServerError('OTP expiry configuration is invalid.');
+  }
 
-  user.passwordResetOtp = otp;
-  user.passwordResetExpiry = new Date(Date.now() + expiresInMinutes * 60 * 1000);
-  await user.save();
+  // User never initiated forgot password
+  const existingOtp = await OtpToken.findOne({ userId: user._id, type: 'password_reset' });
+  if (existingOtp) {
+    throw new BadRequestError('Current OTP is still valid. Please wait before requesting a new one.');
+  }
 
-  await sendMail({
-    from: config.gmail_app_user,
-    to: user.email,
-    subject: 'Password Reset Code',
-    html: otpMailTemplate(otp, expiresInMinutes),
+  // If no OTP found at all — user never initiated forgot password
+  const otp = generateOTP();
+
+  // Create new OTP — pre('save') hook will hash it
+  await OtpToken.create({
+    userId: user._id,
+    type: 'password_reset',
+    otpHash: otp,
+    expiresAt: new Date(Date.now() + expiresInMinutes * 60 * 1000),
   });
 
+  try {
+    await sendMail({
+      from: config.gmail_app_user,
+      to: user.email,
+      subject: 'Password Reset Code',
+      html: otpMailTemplate(otp, expiresInMinutes),
+    });
+  } catch {
+    // Mail failed — delete OTP so user can retry
+    await OtpToken.deleteOne({ userId: user._id, type: 'password_reset' });
+    throw new BadRequestError('Failed to send reset email. Please try again.');
+  }
+
   return null;
 };
 
-// forget password
-const forgotPassword = async (email: string) => {
-  const normalizedEmail = email.trim().toLowerCase();
-  const user = await userRepository.findByEmail(normalizedEmail);
 
-  if (!user) {
-    throw new UnauthorizedError('User not found!');
-  }
-
-  if (user.isSocialLogin && !user.password) {
-    throw new BadRequestError("Social user don't have password to change!");
-  }
-
-  const now = new Date();
-  const expiresInMinutes = Number(config.otp_expires_in);
-  // Generate new OTP
-
-  const otp = generateOTP();
-
-  const otpExpiry = new Date(now.getTime() + expiresInMinutes * 60 * 1000);
-
-  user.passwordResetOtp = otp;
-  user.passwordResetExpiry = otpExpiry;
-  await user.save();
-
-  const mailOptions = {
-    from: config.gmail_app_user,
-    to: email,
-    subject: 'Password Reset verification Code',
-    html: otpMailTemplate(otp, expiresInMinutes),
-  };
-
-  // Send OTP
-  await sendMail(mailOptions);
-  return null;
-};
-
-// verifyOtpForForgetPassword
+// verifyForgetPasswordByOtp
 const verifyForgetPasswordByOtp = async (email: string, otp: string) => {
-  const user = await userRepository.findByEmail(email, ['passwordResetOtp', 'passwordResetExpiry']);
-  console.log({ user: user });
+  const user = await userRepository.findByEmail(email, '_id');
+
   if (!user) {
     throw new UnauthorizedError('User not found!');
   }
 
-  // Check if OTP is expired
-  const now = new Date();
-  if (!user.passwordResetExpiry || user.passwordResetExpiry < now) {
-    throw new BadRequestError('OTP has expired. Please request a Fresh OTP!');
+  const otpToken = await OtpToken.findOne({ userId: user._id, type: 'password_reset' });
+
+  // TTL auto-deletes expired OTPs, so null means expired or never requested
+  if (!otpToken) {
+    throw new BadRequestError('OTP has expired. Please request a fresh OTP!');
   }
 
-  const isResetPasswordOtpMatched = await user.isResetPasswordOtpMatched(otp);
-
-  // If OTP is invalid, throw error
-  if (!isResetPasswordOtpMatched) {
-    throw new BadRequestError('OTP is Incorrect');
+  const isMatched = await otpToken.isVerificationOtpMatched(otp);
+  if (!isMatched) {
+    throw new BadRequestError('OTP is incorrect.');
   }
-  user.isOtpVerified = true;
-  await user.save();
-  return null;
+
+  // OTP verified — delete it immediately, no longer needed
+  await OtpToken.deleteOne({ userId: user._id, type: 'password_reset' });
+
+  // Issue a short-lived reset token scoped only for password reset
+  const resetToken = await jwtHelpers.createToken(
+    {
+      id: user._id.toString(),
+      purpose: 'password_reset',
+    },
+  );
+
+  return { resetToken };
 };
 
-// resetPasswordIntoDB
-const resetPassword = async (email: string, newPassword: string) => {
-  const user = await userRepository.findByEmail(email);
-  if (!user) throw new BadRequestError('User not found');
+// resetPassword
+const resetPassword = async (resetToken: string, newPassword: string) => {
+  // Verify and decode reset token
+  let decoded: { id?: string; purpose?: string };
 
-  if (!user.isOtpVerified) {
-    throw new BadRequestError('invalid otp! verify otp again');
+  try {
+    decoded = jwtHelpers.verifyToken(resetToken, config.jwt_access_token_secret) as { id?: string; purpose?: string };
+    console.log(decoded)
+  } catch {
+    throw new UnauthorizedError('Reset token is invalid or expired. Please verify OTP again.');
   }
 
-  if (!user.passwordResetOtp && !user.passwordResetExpiry) {
-    throw new BadRequestError('No password reset request found');
+  // Ensure token is scoped for password reset only
+  if (!decoded.id || decoded.purpose !== 'password_reset') {
+    throw new UnauthorizedError('Invalid reset token.');
+  }
+
+  const user = await userRepository.findById(decoded.id);
+  if (!user) {
+    throw new UnauthorizedError('User not found!');
   }
 
   user.password = newPassword;
-
-  user.passwordResetOtp = undefined;
-  user.passwordResetExpiry = undefined;
-  user.isOtpVerified = undefined;
   await user.save();
 
-  const JwtPayload: jwtPayload = {
-    id: user._id.toString(),
-    role: user.role,
-  };
-
-  const tokens = await jwtHelpers.generateTokens(JwtPayload);
-  return tokens;
+  return null;
 };
+// resetPasswordIntoDB
 
 
 //change Password
@@ -399,8 +468,12 @@ const generateNewAccessTokenByRefreshToken = async (refreshToken: string) => {
   if (!user) throw new UnauthorizedError('User not found');
 
   // check if user is active or deleted
-  if (!user.isActive || user.isDeleted) {
-    throw new UnauthorizedError('Unauthorized access');
+
+  if (user.status === USER_STATUS.BLOCKED) {
+    throw new UnauthorizedError('This account has been blocked. Contact support for more info');
+  }
+  if (user.deletedAt) {
+    throw new UnauthorizedError('This account has been deleted. if you want to restore this account, create account with same email again');
   }
 
   // fetch session

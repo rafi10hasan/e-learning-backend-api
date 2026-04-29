@@ -25,7 +25,7 @@ const createFaculty = async (payload: TCreateFacultyPayload) => {
 
     const result = await Faculty.create(facultyData);
     return {
-        facultyId: result._id,
+        faculty: result._id,
         name: result.name,
         slug: result.slug,
     };
@@ -36,7 +36,7 @@ const getAllFaculties = async () => {
 
     const result = await Faculty.find({}).lean();
     const formattedResult = result.map(faculty => ({
-        facultyId: faculty._id,
+        faculty: faculty._id,
         name: faculty.name,
         slug: faculty.slug,
     }));

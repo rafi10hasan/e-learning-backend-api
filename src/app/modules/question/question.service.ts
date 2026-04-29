@@ -21,7 +21,7 @@ const createQuestion = async (
 
     if (payload.examType && (payload.examType === EXAM_TYPES.MATURE || payload.examType === EXAM_TYPES.SEMIMATURE)) {
 
-        const isExistSubject = await Subject.findOne({ _id: payload.subjectId, examType: payload.examType }).select("_id");
+        const isExistSubject = await Subject.findOne({ _id: payload.subjects, examType: payload.examType }).select("_id");
 
         if (!isExistSubject) {
             throw new BadRequestError("Subject not found for the given exam type");
@@ -29,12 +29,12 @@ const createQuestion = async (
     }
 
     if (payload.examType && (payload.examType === EXAM_TYPES.ENTRANCE_EXAM)) {
-        const isExistFaculty = await Faculty.findOne({ _id: payload.facultyId, examType: payload.examType }).select("_id");
+        const isExistFaculty = await Faculty.findOne({ _id: payload.faculty, examType: payload.examType }).select("_id");
 
         if (!isExistFaculty) {
             throw new BadRequestError("Faculty not found for the given exam type");
         }
-        const isExistDepartment = await Department.findOne({ _id: payload.departmentId, examType: payload.examType, facultyId: payload.facultyId }).select("_id");
+        const isExistDepartment = await Department.findOne({ _id: payload.departments, examType: payload.examType, faculty: payload.faculty }).select("_id");
 
         if (!isExistDepartment) {
             throw new BadRequestError("Department not found for the given faculty and exam type");
@@ -115,7 +115,7 @@ const fetchQuestions = async (
             {
                 $lookup: {
                     from: "subjects",
-                    localField: "subjectId",
+                    localField: "subjects",
                     foreignField: "_id",
                     as: "subject"
                 }
@@ -128,7 +128,7 @@ const fetchQuestions = async (
             {
                 $lookup: {
                     from: "departments",
-                    localField: "departmentId",
+                    localField: "departments",
                     foreignField: "_id",
                     as: "department"
                 }
@@ -140,7 +140,7 @@ const fetchQuestions = async (
         {
             $lookup: {
                 from: "passages",
-                localField: "passageId",
+                localField: "passage",
                 foreignField: "_id",
                 as: "passage"
             }
@@ -203,9 +203,9 @@ const importQuestionsToDb = async (fileBuffer: Buffer) => {
                 const formattedQuestion = {
                     examType: row.examType?.trim(),
                     year: row.year?.trim(),
-                    facultyId: row.facultyId?.trim() || undefined,
-                    departmentId: row.departmentId?.trim() || undefined,
-                    subjectId: row.subjectId?.trim() || undefined,
+                    faculty: row.faculty?.trim() || undefined,
+                    departments: row.departments?.trim() || undefined,
+                    subjects: row.subjects?.trim() || undefined,
                     source: row.source?.trim(),
                     testType: row.testType?.trim(),
                     access: row.access?.trim(),
@@ -245,7 +245,7 @@ const importQuestionsToDb = async (fileBuffer: Buffer) => {
     const questionTexts = validQuestions.map((q) => q.questionText);
     const existingQuestions = await Question.find({
         questionText: { $in: questionTexts },
-        subjectId: validQuestions[0].subjectId,
+        subjects: validQuestions[0].subjects,
         year: { $in: validQuestions.map((q) => q.year) },
     }).select('questionText');
 
@@ -288,10 +288,10 @@ const importQuestionsToDb = async (fileBuffer: Buffer) => {
 //     const skip = (page - 1) * limit;
 //     const total = await Question.countDocuments(query);
 //     const questions = await Question.find(query)
-//         .populate("subjectId", "name slug")
-//         .populate("facultyId", "name slug")
-//         .populate("departmentId", "name slug")
-//         .populate("passageId", "passage_code title")
+//         .populate("subjects", "name slug")
+//         .populate("faculty", "name slug")
+//         .populate("departments", "name slug")
+//         .populate("passage", "passage_code title")
 //         .skip(skip)
 //         .limit(limit)
 //         .sort({ created_at: -1 });

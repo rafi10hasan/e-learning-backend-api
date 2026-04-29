@@ -10,7 +10,6 @@ const adminData = {
   email: "rafayet12837@gmail.com", //config.gmail_app_user,
   password: config.admin_password,
   avatar: randomUserImage(),
-  isEmailVerified: true,
 };
 
 const seedingAdmin = async () => {
@@ -19,8 +18,9 @@ const seedingAdmin = async () => {
       email: adminData.email,
     });
     if (!admin) {
-      await User.create(adminData);
-
+      const user = await User.create(adminData);
+      user.verification.emailVerifiedAt = new Date();
+      await user.save();
       console.log('admin seeded successfully!');
     } else {
       console.log('admin already exists!');

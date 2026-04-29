@@ -1,22 +1,22 @@
 import slugify from "slugify";
 
+import mongoose from "mongoose";
 import { BadRequestError } from "../../errors/request/apiError";
 import Faculty from "../faculty/faculty.model";
 import Department from "./department.model";
 import { TCreateDepartmentPayload } from "./department.zod";
-import mongoose from "mongoose";
 
 
-const createDepartmentUnderFaculty = async (payload: TCreateDepartmentPayload, facultyId: string) => {
+const createDepartmentUnderFaculty = async (payload: TCreateDepartmentPayload, faculty: string) => {
 
-    const isFacultyExist = await Faculty.findOne({ _id: facultyId });
+    const isFacultyExist = await Faculty.findOne({ _id: faculty });
     if (!isFacultyExist) {
         throw new BadRequestError("Faculty not found");
     }
 
     const isExist = await Department.findOne({
         name: { $regex: new RegExp(`^${payload.name}$`, 'i') },
-        facultyId,
+        faculty,
     });
 
     if (isExist) {
@@ -29,28 +29,28 @@ const createDepartmentUnderFaculty = async (payload: TCreateDepartmentPayload, f
     const departmentData = {
         ...payload,
         slug: generatedSlug,
-        facultyId,
+        faculty,
     };
 
     const result = await Department.create(departmentData);
     return {
-        departmentId: result._id,
+        departments: result._id,
         name: result.name,
         slug: result.slug,
-        facultyId: result.facultyId,
+        faculty: result.faculty,
     };
 };
 
 
-const getAllDepartmentByFacultyId = async (facultyId: string) => {
-   console.log(facultyId)
-    const result = await Department.find({ facultyId: new mongoose.Types.ObjectId(facultyId) });
-    console.log({result})
+const getAllDepartmentByfaculty = async (faculty: string) => {
+    console.log(faculty)
+    const result = await Department.find({ faculty: new mongoose.Types.ObjectId(faculty) });
+    console.log({ result })
     const formattedResult = result.map(department => ({
-        departmentId: department._id,
+        departments: department._id,
         name: department.name,
         slug: department.slug,
-        facultyId: department.facultyId,
+        faculty: department.faculty,
     }));
 
     return formattedResult;
@@ -58,5 +58,5 @@ const getAllDepartmentByFacultyId = async (facultyId: string) => {
 
 export const departmentService = {
     createDepartmentUnderFaculty,
-    getAllDepartmentByFacultyId,
+    getAllDepartmentByfaculty,
 };

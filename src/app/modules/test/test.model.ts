@@ -12,10 +12,10 @@ const TestSchema = new Schema<ITest>(
       enum: Object.values(EXAM_TYPES),
       required: true,
     },
-    facultyId: { type: Schema.Types.ObjectId, ref: "Subject", required:false },
+    faculty: { type: Schema.Types.ObjectId, ref: "Subject", required: false },
     year: { type: Number, required: true },
-    departmentIds: [{ type: Schema.Types.ObjectId, ref: "Department", required: false }],
-    subjectIds: [{ type: Schema.Types.ObjectId, ref: "Subject", required: false }],
+    departments: { type: Schema.Types.ObjectId, ref: "Department", required: false },
+    subjects: [{ type: Schema.Types.ObjectId, ref: "Subject", required: false }],
     testType: {
       type: String,
       enum: Object.values(TEST_TYPES),

@@ -1,6 +1,6 @@
 import { Types } from "mongoose";
 import { TAccessTypes, TExamTypes, TTestTypes } from "../../../interfaces";
-import { TQuestionStatus, TSources } from "./question.constant";
+import { TQuestionDifficulty, TQuestionStatus, TSources } from "./question.constant";
 
 
 export interface IOption {
@@ -19,10 +19,10 @@ export interface QuestionFiles {
 export interface IQuestion extends Document {
     examType: TExamTypes;
     year: number;
-    subjectId?: Types.ObjectId;
-    facultyId?: Types.ObjectId;
-    departmentId?: Types.ObjectId;
-    passageId?: Types.ObjectId;
+    subject?: Types.ObjectId;
+    faculty?: Types.ObjectId;
+    departments?: Types.ObjectId[];
+    passage?: Types.ObjectId;
     source: TSources;
     testType: TTestTypes;
     access: TAccessTypes;
@@ -31,6 +31,7 @@ export interface IQuestion extends Document {
     options: IOption[];
     correctOptionIndex: number;
     explanation?: string;
+    difficultyLevel: TQuestionDifficulty;
     status: TQuestionStatus;
     isActive: boolean;
     created_at: Date;

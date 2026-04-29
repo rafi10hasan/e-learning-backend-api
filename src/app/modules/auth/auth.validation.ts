@@ -38,6 +38,8 @@ const loginAuthSchema = z.object({
     },
   }).optional(),
 
+  isRemembered: z.boolean().optional(),
+
 });
 
 const verifyEmailByOtpSchema = z.object({
@@ -148,20 +150,6 @@ const verifyForgotPasswordSchema = z.object({
 });
 
 const resetPasswordSchema = z.object({
-  email: z.email({
-    error: (issue) => {
-      switch (true) {
-        case issue.input === undefined:
-          return 'Email address is required';
-        case issue.input === null:
-          return 'Email cannot be null';
-        case typeof issue.input !== 'string':
-          return 'Email must be text';
-        default:
-          return 'Please provide a valid email address';
-      }
-    },
-  }),
   newPassword: z
     .string({
       error: (issue) => {

@@ -1,11 +1,11 @@
 import mongoose, { Types } from "mongoose";
 import { TEST_TYPES } from "../../../interfaces";
 import { BadRequestError, NotFoundError } from "../../errors/request/apiError";
+import Department from "../department/department.model";
 import Question from "../question/question.model";
 import { ITest } from "./test.interface";
 import Test from "./test.model";
 import { TCreateTestPayload } from "./test.zod";
-import Department from "../department/department.model";
 
 
 
@@ -14,7 +14,7 @@ interface CreateTestPayload {
   examType: "semi_matura" | "matura" | "provime";
   year: number;
   structureType: string;
-  departmentId?: string;
+  departments?: string;
   testType: "official" | "additional";
   access: "free" | "premium";
   durationMinutes?: number;
@@ -25,7 +25,7 @@ const getPaginatedTestsByType = async (
   testType: string,
   input: {
     examType?: string;
-    departmentId?: string;
+    departments?: string;
     page?: number;
     limit?: number
   }
@@ -46,8 +46,8 @@ const getPaginatedTestsByType = async (
   }
 
   // Provime-er jonno jodi specific department thake
-  if (input.departmentId) {
-    query.departmentId = input.departmentId;
+  if (input.departments) {
+    query.departments = input.departments;
   }
 
   // 2. Parallel Database Operations
@@ -97,7 +97,7 @@ const createTest = async (payload: TCreateTestPayload): Promise<ITest> => {
 // Main functions
 const getAllOfficialTests = async (input: {
   category?: string;
-  departmentId?: string; page?: number; limit?: number
+  departments?: string; page?: number; limit?: number
 }) => {
   return getPaginatedTestsByType(TEST_TYPES.OFFICIAL, input);
 };
@@ -105,7 +105,7 @@ const getAllOfficialTests = async (input: {
 // get all additioinal tests
 const getAllAdditionalTests = async (input: {
   category?: string;
-  departmentId?: string; page?: number; limit?: number
+  departments?: string; page?: number; limit?: number
 }) => {
   return getPaginatedTestsByType(TEST_TYPES.ADDITIONAL, input);
 };
@@ -149,13 +149,13 @@ const getQuestionByTestId = async (
     }
 
     // Found ID query-te set kora
-    query.departmentId = departmentDoc._id;
+    query.departments = departmentDoc._id;
   }
 
   // 4. Parallel Operations
   const [questions, total] = await Promise.all([
     Question.find(query)
-      .select("questionText options year departmentId questionImageUrl correctOptionIndex explanation")
+      .select("questionText options year departments questionImageUrl correctOptionIndex explanation")
       .skip(skip)
       .limit(limit)
       .lean(),
@@ -185,7 +185,7 @@ const getQuestionByTestId = async (
 // ─── Get By Id ────────────────────────────────────────────────
 const getTestById = async (id: string): Promise<ITest> => {
   const test = await Test.findById(id)
-    .populate("departmentId", "name slug")
+    .populate("departments", "name slug")
     .select("-questionIds");
 
   if (!test || !test.isActive) {
@@ -207,8 +207,8 @@ const getTestWithQuestions = async (id: string) => {
     isActive: true,
     status: "published",
   })
-    .populate("subjectId", "name slug")
-    .populate("passageId", "passageCode title content");
+    .populate("subjects", "name slug")
+    .populate("passage", "passageCode title content");
 
   // original array order maintain করো
   const orderedQuestions = test.questionIds
@@ -238,12 +238,12 @@ const getLinkableQuestions = async (
   filter: {
     examType?: string;
     year?: number;
-    subjectId?: string;
+    subjects?: string;
     testType?: string;
     access?: string;
-    passageId?: string;
-    facultyId?: string;
-    departmentId?: string;
+    passage?: string;
+    faculty?: string;
+    departments?: string;
     status?: string;
   }
 ) => {
@@ -256,19 +256,19 @@ const getLinkableQuestions = async (
   query.examType = filter.examType ?? test.examType;
   query.year = filter.year ? Number(filter.year) : test.year;
 
-  if (filter.subjectId) query.subjectId = filter.subjectId;
+  if (filter.subjects) query.subjects = filter.subjects;
   if (filter.testType) query.testType = filter.testType;
   if (filter.access) query.access = filter.access;
-  if (filter.passageId) query.passageId = filter.passageId;
-  if (filter.facultyId) query.facultyId = filter.facultyId;
-  if (filter.departmentId) query.departmentId = filter.departmentId;
+  if (filter.passage) query.passage = filter.passage;
+  if (filter.faculty) query.faculty = filter.faculty;
+  if (filter.departments) query.departments = filter.departments;
   if (filter.status) query.status = filter.status;
 
   const linkedIds = test.questionIds.map((id) => id.toString());
 
   const questions = await Question.find(query)
-    .populate("subjectId", "name slug")
-    .populate("passageId", "passageCode title")
+    .populate("subjects", "name slug")
+    .populate("passage", "passageCode title")
     .sort({ createdAt: 1 });
 
   // প্রতিটা question এ isLinked flag যোগ করো

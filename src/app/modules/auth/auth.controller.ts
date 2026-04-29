@@ -81,8 +81,20 @@ const verifyResetPassword = asyncHandler(async (req: Request, res: Response) => 
 
 // reset forget password
 const resetForgetPassword = asyncHandler(async (req: Request, res: Response) => {
-  const { email, newPassword } = req.body;
-  const result = await userAuthService.resetPassword(email, newPassword);
+  const { newPassword } = req.body;
+  const resetToken = req.headers.authorization?.split(' ')[1];
+
+  if (!resetToken) {
+    sendResponse(res, {
+      statusCode: StatusCodes.UNAUTHORIZED,
+      success: false,
+      message: 'Reset token is required',
+      data: null,
+    });
+    return;
+  }
+
+  const result = await userAuthService.resetPassword(resetToken, newPassword);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,

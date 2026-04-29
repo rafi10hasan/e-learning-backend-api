@@ -67,10 +67,10 @@ export const createQuestionSchema = z
       .int({ message: "Year must be an integer" })
       .min(2000, { message: "Year must be 2000 or later" })
       .max(new Date().getFullYear(), { message: "Year cannot be in the future" }),
-    subjectId: z.string({ message: "Subject ID must be a string" }).optional(),
-    facultyId: z.string({ message: "Faculty ID must be a string" }).optional(),
-    departmentId: z.string({ message: "Department ID must be a string" }).optional(),
-    passageId: z.string({ message: "Passage ID must be a string" }).optional(),
+    subjects: z.string({ message: "Subject ID must be a string" }).optional(),
+    faculty: z.string({ message: "Faculty ID must be a string" }).optional(),
+    departments: z.string({ message: "Department ID must be a string" }).optional(),
+    passage: z.string({ message: "Passage ID must be a string" }).optional(),
     source: z.enum(["archive", "practice", "both"], {
       message: "Source must be archive, practice or both",
     }).default("both"),
@@ -105,7 +105,7 @@ export const createQuestionSchema = z
   }).superRefine((data, ctx) => {
 
     if (data.examType === "semi_matura" || data.examType === "matura") {
-      if (!data.subjectId) {
+      if (!data.subjects) {
         ctx.addIssue({
           code: 'custom',
           maximum: 1,
@@ -115,7 +115,7 @@ export const createQuestionSchema = z
           message: "Subject ID is required when exam type is semi_matura or matura",
         });
       }
-      if (data.departmentId || data.facultyId) {
+      if (data.departments || data.faculty) {
         ctx.addIssue({
           code: 'custom',
           maximum: 1,
@@ -128,7 +128,7 @@ export const createQuestionSchema = z
     }
 
     if (data.examType === "provime") {
-      if (!data.facultyId) {
+      if (!data.faculty) {
         ctx.addIssue({
           code: 'custom',
           maximum: 1,
@@ -138,7 +138,7 @@ export const createQuestionSchema = z
           message: "Faculty ID is required when exam type is provime",
         });
       }
-      if (!data.departmentId) {
+      if (!data.departments) {
         ctx.addIssue({
           code: 'custom',
           maximum: 1,
@@ -149,7 +149,7 @@ export const createQuestionSchema = z
         });
       }
 
-      if (data.subjectId) {
+      if (data.subjects) {
         ctx.addIssue({
           code: 'custom',
           maximum: 1,
@@ -173,10 +173,10 @@ const updateQuestionSchema = z
       .min(2000, { message: "Year must be 2000 or later" })
       .max(new Date().getFullYear(), { message: "Year cannot be in the future" })
       .optional(),
-    subjectId: z.string({ message: "Subject ID must be a string" }).optional(),
-    facultyId: z.string({ message: "Faculty ID must be a string" }).optional(),
-    departmentId: z.string({ message: "Department ID must be a string" }).optional(),
-    passageId: z.string({ message: "Passage ID must be a string" }).optional(),
+    subjects: z.string({ message: "Subject ID must be a string" }).optional(),
+    faculty: z.string({ message: "Faculty ID must be a string" }).optional(),
+    departments: z.string({ message: "Department ID must be a string" }).optional(),
+    passage: z.string({ message: "Passage ID must be a string" }).optional(),
     source: z.enum(["archive", "practice", "both"], {
       message: "Source must be archive, practice or both",
     }).optional(),
