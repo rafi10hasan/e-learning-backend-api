@@ -24,7 +24,7 @@ const loginWithCredential = async (credential: TLoginPayload) => {
 
   const user = await userRepository.findByEmail(email);
   if (!user) throw new UnauthorizedError('user not found with this email');
-
+  
   console.log(user)
   if (user.deletedAt) {
     throw new UnauthorizedError('This account has been deleted. if you want to restore this account, create account with same email again');
@@ -44,8 +44,8 @@ const loginWithCredential = async (credential: TLoginPayload) => {
   const isPasswordMatch = await user.isPasswordMatched(password);
   if (!isPasswordMatch) throw new BadRequestError(`password didn't match`);
 
-  if (!user.isEmailVerified) {
-    await sendVerificationOtp(user, email);
+  if (!user.verification.emailVerifiedAt) {
+    await sendVerificationOtp(user._id, email);
     return {
       status: 'UNVERIFIED'
     };
@@ -72,7 +72,7 @@ const loginWithCredential = async (credential: TLoginPayload) => {
 // authentication with Google
 const loginWithOAuth = async (credential: socialLoginPayload) => {
   const { provider, token } = credential;
-
+  
   let payload;
   if (provider === 'google') {
     const ticket = await googleClient.verifyIdToken({
@@ -110,8 +110,8 @@ const loginWithOAuth = async (credential: socialLoginPayload) => {
     if (!user) {
       throw new BadRequestError('Failed to create user');
     }
-    user.isEmailVerified = true;
-    user.isActive = true;
+    user.verification.emailVerifiedAt = new Date();
+    user.status = USER_STATUS.ACTIVE;
     user.isSocialLogin = true;
     user.avatar = picture;
     user.role = USER_ROLE.STUDENT;
@@ -173,9 +173,9 @@ const verifyAccountByOtp = async (email: string, otp: string, fcmToken?: string)
   // console.log("fcmToken", fcmToken)
 
   // Mark user as verified
-  user.isEmailVerified = true;
-  user.verificationOtp = undefined;
-  user.verificationOtpExpiry = undefined;
+  user.verification.emailVerifiedAt = new Date();
+
+  await OtpToken.deleteOne({ userId: user._id, type: 'email_verification' });
 
   await user.save();
 
@@ -202,7 +202,12 @@ const resendEmailVerificationOtpAgain = async (email: string) => {
     throw new UnauthorizedError('User not found!');
   }
 
-  if (user.isEmailVerified) {
+  // Guard: email might be null (social login users)
+  if (!user.email) {
+    throw new BadRequestError('No email address associated with this account.');
+  }
+
+  if (user.verification.emailVerifiedAt) {
     throw new BadRequestError('This account is already verified!');
   }
 
@@ -283,7 +288,7 @@ const forgotPassword = async (email: string) => {
   await OtpToken.create({
     userId: user._id, // ← was missing
     type: 'password_reset',
-    otpHash: otp,
+    otpHash: otp,   
     expiresAt: new Date(Date.now() + expiresInMinutes * 60 * 1000),
   });
 

@@ -7,8 +7,6 @@ import { departmentController } from './department.controller';
 import departmentValidationZodSchema from './department.zod';
 
 
-
-
 const departmentRouter = Router();
 
 departmentRouter.post(
