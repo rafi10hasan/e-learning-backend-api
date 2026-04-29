@@ -79,7 +79,11 @@ authRouter.post(
 
 authRouter.patch(
   '/change-password',
+<<<<<<< HEAD
   authMiddleware(USER_ROLE.USER, USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+=======
+  authMiddleware(USER_ROLE.STUDENT, USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+>>>>>>> c4d66ed249b34077675a2dae65462ed850027e47
   validateRequest({
     body: authValidationZodSchema.changePasswordSchema,
   }),

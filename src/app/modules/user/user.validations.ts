@@ -51,17 +51,6 @@ const createAuthSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[@$!%*?&#]/, 'Password must contain at least one special character'),
 
-    city: z
-    .string({
-      error: (issue) => {
-        if (issue.input === undefined) return 'City is required';
-        if (typeof issue.input !== 'string') return 'City must be a string';
-        return 'Invalid city format';
-      },
-    })
-    .min(3, 'City must be at least 3 characters long')
-    .max(20, 'City cannot exceed 20 characters')
-
 });
 
 const createSocialAuthSchema = z.object({

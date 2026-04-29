@@ -25,6 +25,7 @@ export const userSchema = new Schema<IUser>(
       type: String,
       required: false,
     },
+<<<<<<< HEAD
     passwordChangedAt: {
       type: Date,
       select: false,
@@ -37,6 +38,22 @@ export const userSchema = new Schema<IUser>(
       type: String,
       enum: Object.values(USER_ROLE),
       default: USER_ROLE.STUDENT,
+=======
+
+    verification: {
+      emailVerifiedAt: {
+        type: Date,
+        default: null
+      },
+      phoneVerifiedAt: {
+        type: Date,
+        default: null
+      }
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+>>>>>>> c4d66ed249b34077675a2dae65462ed850027e47
     },
     provider: {
       type: String,

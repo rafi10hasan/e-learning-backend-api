@@ -44,8 +44,8 @@ const loginWithCredential = async (credential: TLoginPayload) => {
   const isPasswordMatch = await user.isPasswordMatched(password);
   if (!isPasswordMatch) throw new BadRequestError(`password didn't match`);
 
-  if (!user.verification.emailVerifiedAt) {
-    await sendVerificationOtp(user._id, email);
+  if (!user.isEmailVerified) {
+    await sendVerificationOtp(user, email);
     return {
       status: 'UNVERIFIED'
     };
@@ -110,8 +110,8 @@ const loginWithOAuth = async (credential: socialLoginPayload) => {
     if (!user) {
       throw new BadRequestError('Failed to create user');
     }
-    user.verification.emailVerifiedAt = new Date();
-    user.status = USER_STATUS.ACTIVE;
+    user.isEmailVerified = true;
+    user.isActive = true;
     user.isSocialLogin = true;
     user.avatar = picture;
     user.role = USER_ROLE.STUDENT;
@@ -173,9 +173,9 @@ const verifyAccountByOtp = async (email: string, otp: string, fcmToken?: string)
   // console.log("fcmToken", fcmToken)
 
   // Mark user as verified
-  user.verification.emailVerifiedAt = new Date();
-
-  await OtpToken.deleteOne({ userId: user._id, type: 'email_verification' });
+  user.isEmailVerified = true;
+  user.verificationOtp = undefined;
+  user.verificationOtpExpiry = undefined;
 
   await user.save();
 
@@ -202,12 +202,7 @@ const resendEmailVerificationOtpAgain = async (email: string) => {
     throw new UnauthorizedError('User not found!');
   }
 
-  // Guard: email might be null (social login users)
-  if (!user.email) {
-    throw new BadRequestError('No email address associated with this account.');
-  }
-
-  if (user.verification.emailVerifiedAt) {
+  if (user.isEmailVerified) {
     throw new BadRequestError('This account is already verified!');
   }
 
