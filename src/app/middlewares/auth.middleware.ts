@@ -31,20 +31,20 @@ const authMiddleware = (...requiredRoles: string[]) => {
 
      
 
-      if (user.isDeleted) {
+      if (user.deletedAt) {
         throw new UnauthorizedError('Unauthorized Access');
       }
 
-      if (!user.isEmailVerified) {
-        throw new UnauthorizedError('Unauthorized Access');
+      if (!user.verification) {
+        throw new UnauthorizedError('This email is not verified. Please verify your email to access this resource.');
       }
 
       if (user.passwordChangedAt && user.isJWTIssuedBeforePasswordChanged(iat)) {
         throw new UnauthorizedError('Password changed, please login again');
       }
 
-      if (!user.isActive) {
-        throw new UnauthorizedError('Unauthorized Access');
+      if (user.status === 'BLOCKED') {
+        throw new UnauthorizedError('This account is blocked. Contact support.');
       }
       
 
