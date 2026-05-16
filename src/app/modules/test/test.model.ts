@@ -14,7 +14,7 @@ const TestSchema = new Schema<ITest>(
     },
     faculty: { type: Schema.Types.ObjectId, ref: "Subject", required: false },
     year: { type: Number, required: true },
-    departments: { type: Schema.Types.ObjectId, ref: "Department", required: false },
+    departments: [{ type: Schema.Types.ObjectId, ref: "Department", required: false }],
     subjects: [{ type: Schema.Types.ObjectId, ref: "Subject", required: false }],
     testType: {
       type: String,

@@ -10,7 +10,7 @@ export interface ITest extends Document {
     testType: TTestTypes;
     access: TAccessTypes;
     faculty: Types.ObjectId;
-    departments: Types.ObjectId;
+    departments: Types.ObjectId[];
     subjects: Types.ObjectId[];
     status: TTestStatus;
     totalQuestions: number;

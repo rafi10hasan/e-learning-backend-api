@@ -7,9 +7,10 @@ import { randomUserImage } from './randomUserImage';
 const adminData = {
   fullName: 'ADMIN',
   role: USER_ROLE.SUPER_ADMIN,
-  email: "rafayet12837@gmail.com", //config.gmail_app_user,
+  email: config.admin_email,
   password: config.admin_password,
   avatar: randomUserImage(),
+  status: 'active',
 };
 
 const seedingAdmin = async () => {

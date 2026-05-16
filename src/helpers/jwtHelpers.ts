@@ -9,6 +9,7 @@ import config from '../config';
 // verify jwt token
 const verifyToken = (token: string, secret: Secret): JwtPayload => {
   const payload = jwt.verify(token, secret) as JwtPayload;
+  console.log({ payload });
   return payload;
 };
 
@@ -44,9 +45,8 @@ const generateTokens = async (payload: JwtPayload) => {
 
 // create token
 const createToken = async (payload: JwtPayload) => {
-  const accessTokenExpiresIn = config.otp_expires_in as SignOptions['expiresIn'];
   const token = jwt.sign(payload, config.jwt_access_token_secret!, {
-    expiresIn: accessTokenExpiresIn,
+    expiresIn:  config.otp_token_expiresin,
   });
   return token;
 };

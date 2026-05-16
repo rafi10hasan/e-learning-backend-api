@@ -323,6 +323,7 @@ const resetPasswordOtpAgain = async (email: string) => {
 
   // Validate config first
   const expiresInMinutes = Number(config.otp_expires_in);
+  console.log({ expiresInMinutes });
   if (isNaN(expiresInMinutes) || expiresInMinutes <= 0) {
     throw new InternalServerError('OTP expiry configuration is invalid.');
   }

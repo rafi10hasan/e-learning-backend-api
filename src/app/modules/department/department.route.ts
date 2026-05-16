@@ -20,7 +20,6 @@ departmentRouter.post(
     departmentController.createDepartmentIntodb,
 );
 
-
 departmentRouter.get(
     '/retrieve/:faculty',
     authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),

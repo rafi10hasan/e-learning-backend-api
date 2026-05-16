@@ -83,7 +83,9 @@ const verifyResetPassword = asyncHandler(async (req: Request, res: Response) => 
 const resetForgetPassword = asyncHandler(async (req: Request, res: Response) => {
   const { newPassword } = req.body;
   const resetToken = req.headers.authorization?.split(' ')[1];
-
+ 
+  console.log({newPassword, resetToken});
+  
   if (!resetToken) {
     sendResponse(res, {
       statusCode: StatusCodes.UNAUTHORIZED,
