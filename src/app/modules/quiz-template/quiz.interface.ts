@@ -15,7 +15,7 @@ export interface IQuizTemplate extends Document {
   electiveQuestionCount: number;
   totalQuestions: number;
   durationMinutes?: number;
-  quizTypes: TQuizTypes;
+  quizType: TQuizTypes;
   status: "draft" | "published";
   isActive: boolean;
   createdAt: Date;

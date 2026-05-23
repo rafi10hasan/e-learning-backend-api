@@ -26,7 +26,7 @@ const QuizTemplateSchema = new Schema<IQuizTemplate>(
     electiveQuestionCount: { type: Number, default: 0 },
     totalQuestions: { type: Number, required: true },
     durationMinutes: { type: Number },
-    quizTypes: {
+    quizType: {
       type: String,
       enum: Object.values(QUIZ_TYPES),
     },
