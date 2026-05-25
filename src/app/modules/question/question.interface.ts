@@ -16,6 +16,7 @@ export interface QuestionFiles {
     option_d_image?: Express.Multer.File[];
 }
 
+
 export interface IQuestion extends Document {
     examType: TExamTypes;
     year: number;
@@ -34,6 +35,6 @@ export interface IQuestion extends Document {
     difficultyLevel: TQuestionDifficulty;
     status: TQuestionStatus;
     isActive: boolean;
-    created_at: Date;
-    updated_at: Date;
+    createdAt: Date;
+    updatedAt: Date;
 } 

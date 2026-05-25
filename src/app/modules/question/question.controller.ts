@@ -33,7 +33,7 @@ const importQuestionIntoDb = asyncHandler(async (req: Request, res: Response) =>
     const csvFile = files?.csv_file?.[0];
 
     if (!csvFile) {
-        return res.status(StatusCodes.BAD_REQUEST).json({ message: "CSV file upload korun" });
+        return res.status(StatusCodes.BAD_REQUEST).json({ message: "CSV file upload is required" });
     }
 
     const result = await questionService.importQuestionsToDb(csvFile.buffer);
