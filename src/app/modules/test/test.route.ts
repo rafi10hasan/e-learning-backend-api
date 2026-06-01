@@ -4,6 +4,7 @@ import { Router } from 'express';
 import authMiddleware from '../../middlewares/auth.middleware';
 
 import { validateRequest } from '../../middlewares/request.validator';
+import { uploadFile } from '../../../helpers/fileuploader';
 import { USER_ROLE } from '../user/user.constant';
 import { testController } from './test.controller';
 import testValidationZodSchema from './test.zod';
@@ -17,6 +18,13 @@ testRouter.post(
     authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
     validateRequest({ body: testValidationZodSchema.createTestSchema }),
     testController.createTest,
+);
+
+testRouter.post(
+    '/import-csv',
+    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+    uploadFile(),
+    testController.importTestsFromCsvIntoDb,
 );
 
 testRouter.get(

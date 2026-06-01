@@ -1,5 +1,6 @@
 import z from "zod";
 import { ACCESS_TYPES, EXAM_TYPES, TEST_TYPES } from "../../../interfaces";
+import { QUERSTION_DIFFICULTY, QUERSTION_STATUS, SOURCE_TYPES } from "../question/question.constant";
 
 
 const createTestSchema = z.object({
@@ -15,7 +16,6 @@ const createTestSchema = z.object({
     access: z.enum([ACCESS_TYPES.FREE, ACCESS_TYPES.PREMIUM], { message: "Access must be free or premium" }).default("free"),
     totalSubjects: z.coerce.number({ message: "Total subjects must be a number" }),
     faculty: z.string({ message: "Faculty ID must be a string" }).optional(),
-    questionIds: z.array(z.string({ message: "Question ID must be a string" })),
     departmentss: z.array(z.string({ message: "Department ID must be a string" })).optional(),
     subjectss: z.array(z.string({ message: "Subject ID must be a string" })).optional(),
 }).superRefine((data, ctx) => {
@@ -88,6 +88,58 @@ const createTestSchema = z.object({
     }
 });;
 
+const csvQuestionOptionSchema = z.object({
+    text: z.string({ message: "Option text is required" }).min(1, { message: "Option text cannot be empty" }),
+    imageUrl: z.string({ message: "Option image URL must be a string" }).optional(),
+});
+
+export const importTestCsvRowSchema = z.object({
+    testCode: z.string({ message: "testCode must be a string" }).optional(),
+    testName: z.string({ message: "testName is required" }).optional(),
+    examType: z.enum([EXAM_TYPES.ENTRANCE_EXAM, EXAM_TYPES.MATURE, EXAM_TYPES.SEMIMATURE], { message: "Invalid exam type" }),
+    year: z.coerce.number({ message: "Year is required" }).int({ message: "Year must be an integer" }).min(2000, { message: "Year must be 2000 or later" }).max(new Date().getFullYear(), { message: "Year cannot be in the future" }),
+    testType: z.literal(TEST_TYPES.OFFICIAL, { message: "Test type must be official" }),
+    access: z.literal(ACCESS_TYPES.PREMIUM, { message: "Access must be premium" }),
+    questionText: z.string({ message: "Question text is required" }).min(1, { message: "Question text cannot be empty" }),
+    questionImageUrl: z.string({ message: "Question image URL must be a string" }).optional(),
+    options: z.array(csvQuestionOptionSchema, { message: "Options must be an array" }).min(2, { message: "At least 2 options are required" }).max(4, { message: "Maximum 4 options allowed" }),
+    correctOptionIndex: z.coerce.number({ message: "Correct option index is required" }).int({ message: "Correct option index must be an integer" }).min(0, { message: "Correct option index must be 0 or greater" }),
+    explanation: z.string({ message: "Explanation must be a string" }).optional(),
+    difficultyLevel: z.enum([QUERSTION_DIFFICULTY.EASY, QUERSTION_DIFFICULTY.MEDIUM, QUERSTION_DIFFICULTY.HARD], { message: "Invalid difficulty level" }).default(QUERSTION_DIFFICULTY.EASY),
+    status: z.enum([QUERSTION_STATUS.DRAFT, QUERSTION_STATUS.PUBLISHED], { message: "Invalid question status" }).default(QUERSTION_STATUS.PUBLISHED),
+    faculty: z.string({ message: "Faculty is required for provime" }).optional(),
+    departments: z.array(z.string({ message: "Department must be a string" })).optional(),
+    subjects: z.string({ message: "Subject is required for semi_matura or matura" }).optional(),
+    passage: z.string({ message: "Passage must be a string" }).optional(),
+}).refine((data) => data.correctOptionIndex < data.options.length, {
+    message: "correctOptionIndex is out of range",
+    path: ["correctOptionIndex"],
+}).superRefine((data, ctx) => {
+    if (data.examType === EXAM_TYPES.ENTRANCE_EXAM) {
+        if (!data.faculty) {
+            ctx.addIssue({ code: "custom", path: ["faculty"], message: "Faculty is required when exam type is provime" });
+        }
+        if (!data.departments || data.departments.length === 0) {
+            ctx.addIssue({ code: "custom", path: ["departments"], message: "At least one department is required when exam type is provime" });
+        }
+        if (data.departments && new Set(data.departments).size !== data.departments.length) {
+            ctx.addIssue({ code: "custom", path: ["departments"], message: "Department IDs must be unique when exam type is provime" });
+        }
+    }
+
+    if (data.examType === EXAM_TYPES.MATURE || data.examType === EXAM_TYPES.SEMIMATURE) {
+        if (!data.subjects) {
+            ctx.addIssue({ code: "custom", path: ["subjects"], message: "Subject is required when exam type is semi_matura or matura" });
+        }
+        if (data.faculty) {
+            ctx.addIssue({ code: "custom", path: ["faculty"], message: "Faculty is not allowed when exam type is semi_matura or matura" });
+        }
+        if (data.departments && data.departments.length > 0) {
+            ctx.addIssue({ code: "custom", path: ["departments"], message: "Departments are not allowed when exam type is semi_matura or matura" });
+        }
+    }
+});
+
 
 export type TCreateTestPayload = z.infer<
     typeof createTestSchema
@@ -95,6 +147,7 @@ export type TCreateTestPayload = z.infer<
 
 const testValidationZodSchema = {
     createTestSchema,
+    importTestCsvRowSchema,
 };
 
 export default testValidationZodSchema;

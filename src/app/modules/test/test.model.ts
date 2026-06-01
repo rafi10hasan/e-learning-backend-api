@@ -5,7 +5,8 @@ import { ITest } from "./test.interface";
 
 
 const TestSchema = new Schema<ITest>(
-  {
+  { 
+    testCode: { type: String, required: true, unique: true },
     title: { type: String, required: true },
     examType: {
       type: String,
@@ -33,11 +34,9 @@ const TestSchema = new Schema<ITest>(
       default: TEST_STATUS.PUBLISHED,
     },
     totalQuestions: { type: Number, default: 0 },
-    totalSubjects: { type: Number, default: 0 },
-    questionIds: [{ type: Schema.Types.ObjectId, ref: "Question" }],
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: true }
+  { timestamps: true, versionKey: false }
 );
 
 TestSchema.index({ examType: 1, year: 1, testType: 1 });

@@ -24,9 +24,6 @@ export interface IQuestion extends Document {
     faculty?: Types.ObjectId;
     departments?: Types.ObjectId[];
     passage?: Types.ObjectId;
-    source: TSources;
-    testType: TTestTypes;
-    access: TAccessTypes;
     questionText: string;
     questionImageUrl?: string;
     options: IOption[];
@@ -34,6 +31,7 @@ export interface IQuestion extends Document {
     explanation?: string;
     difficultyLevel: TQuestionDifficulty;
     status: TQuestionStatus;
+    testIds: Types.ObjectId[];
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;

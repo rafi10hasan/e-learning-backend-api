@@ -22,21 +22,6 @@ const QuestionSchema = new Schema<IQuestion>(
         faculty: { type: Schema.Types.ObjectId, ref: "Faculty" },
         departments: [{ type: Schema.Types.ObjectId, ref: "Department" }],
         passage: { type: Schema.Types.ObjectId, ref: "Passage" },
-        source: {
-            type: String,
-            enum: Object.values(SOURCE_TYPES),
-            required: [true, 'source is required']
-        },
-        testType: {
-            type: String,
-            enum: Object.values(TEST_TYPES),
-            required: true,
-        },
-        access: {
-            type: String,
-            enum: Object.values(ACCESS_TYPES),
-            required: [true, 'access type is required']
-        },
         questionText: { type: String, required: true },
         questionImageUrl: { type: String },
         options: { type: [OptionSchema], required: true },
@@ -47,6 +32,7 @@ const QuestionSchema = new Schema<IQuestion>(
             enum: Object.values(QUERSTION_DIFFICULTY),
             default: QUERSTION_DIFFICULTY.EASY,
         },
+        testIds: [{ type: Schema.Types.ObjectId, ref: "Test" , default:  [] }],
         status: {
             type: String,
             enum: Object.values(QUERSTION_STATUS),

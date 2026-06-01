@@ -14,6 +14,28 @@ const createTest = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
+const importTestsFromCsvIntoDb = asyncHandler(async (req: Request, res: Response) => {
+  const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+  const csvFile = files?.csv_file?.[0];
+
+  if (!csvFile) {
+    return res.status(StatusCodes.BAD_REQUEST).json({
+      success: false,
+      message: "CSV file upload is required",
+    });
+  }
+
+  // Delegate the CSV import work to the service layer.
+  const result = await testService.importTestsFromCsvFile(csvFile.buffer);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.CREATED,
+    success: true,
+    message: "Test and questions imported successfully.",
+    data: result,
+  });
+});
+
 const getAllOfficialTestsIntoDb = asyncHandler(async (req: Request, res: Response) => {
 
   const { examType, departments, page, limit } = req.query;
@@ -180,6 +202,7 @@ const deleteTest = asyncHandler(async (req: Request, res: Response) => {
 
 export const testController = {
   createTest,
+  importTestsFromCsvIntoDb,
   getAllOfficialTestsIntoDb,
   getAllAdditionalTestsIntoDb,
   getQuestionsByTestIdIntoDb,

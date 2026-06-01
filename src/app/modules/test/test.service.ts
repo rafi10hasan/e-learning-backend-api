@@ -1,11 +1,13 @@
 import mongoose, { Types } from "mongoose";
-import { TEST_TYPES } from "../../../interfaces";
+import withTransaction from "../../../helpers/withTransaction";
+import { EXAM_TYPES, TEST_TYPES } from "../../../interfaces";
 import { BadRequestError, NotFoundError } from "../../errors/request/apiError";
 import Department from "../department/department.model";
 import Question from "../question/question.model";
 import { ITest } from "./test.interface";
 import Test from "./test.model";
-import { TCreateTestPayload } from "./test.zod";
+import { buildQuestionContext, NormalizedImportRow, normalizeImportRow, readCsvRows } from "./test.utils";
+import { importTestCsvRowSchema, TCreateTestPayload } from "./test.zod";
 
 
 
@@ -19,6 +21,194 @@ interface CreateTestPayload {
   access: "free" | "premium";
   durationMinutes?: number;
 }
+
+const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
+  // Parse the CSV file into rows first.
+  const rawRows = await readCsvRows(fileBuffer);
+
+  if (rawRows.length === 0) {
+    throw new BadRequestError("CSV file is empty");
+  }
+
+  // Validate every row with zod before touching the database.
+  const parsedRows = rawRows.map((row, index) => {
+    const normalizedRow = normalizeImportRow(row);
+    const validation = importTestCsvRowSchema.safeParse(normalizedRow);
+
+    if (!validation.success) {
+      const firstIssue = validation.error.issues[0];
+      throw new BadRequestError(`CSV validation failed at row ${index + 1}: ${firstIssue.message}`);
+    }
+
+    return validation.data as NormalizedImportRow;
+  });
+
+  const firstRow = parsedRows[0];
+  const testCode = parsedRows.find((row) => row.testCode.trim().length > 0)?.testCode.trim();
+  const testName = parsedRows.find((row) => row.testName.trim().length > 0)?.testName.trim();
+
+  if (!testCode) {
+    throw new BadRequestError("testCode is required in at least one CSV row");
+  }
+
+  if (!testName) {
+    throw new BadRequestError("testName is required in at least one CSV row");
+  }
+
+  const mismatchedTestCode = parsedRows.find(
+    (row) => row.testCode.trim().length > 0 && row.testCode.trim() !== testCode
+  );
+  if (mismatchedTestCode) {
+    throw new BadRequestError("All non-empty testCode values must match");
+  }
+
+  const mismatchedTestName = parsedRows.find(
+    (row) => row.testName.trim().length > 0 && row.testName.trim() !== testName
+  );
+  if (mismatchedTestName) {
+    throw new BadRequestError("All non-empty testName values must match");
+  }
+
+  // Prevent duplicate question text inside the same CSV file.
+  const duplicateQuestion = parsedRows.find(
+    (row, index) => parsedRows.findIndex((item) => item.questionText === row.questionText) !== index
+  );
+  if (duplicateQuestion) {
+    throw new BadRequestError(`Duplicate questionText found in CSV: ${duplicateQuestion.questionText}`);
+  }
+
+  const resolvedContexts = await Promise.all(parsedRows.map((row) => buildQuestionContext(row)));
+  return withTransaction(async (session) => {
+    const existingTest = await Test.findOne({ testCode }).session(session);
+
+    if (
+      existingTest &&
+      (
+        existingTest.examType !== firstRow.examType ||
+        existingTest.year !== firstRow.year ||
+        existingTest.testType !== firstRow.testType ||
+        existingTest.access !== firstRow.access
+      )
+    ) {
+      throw new BadRequestError(`Test already exists with a different exam type, year, test type or access: ${testCode}`);
+    }
+
+    const createdTest = existingTest ?? (await Test.create(
+      [
+        {
+          title: testName,
+          testCode,
+          examType: firstRow.examType,
+          year: firstRow.year,
+          testType: firstRow.testType,
+          access: firstRow.access,
+          totalQuestions: 0,
+          ...resolvedContexts[0],
+        },
+      ],
+      { session }
+    ))[0];
+
+    // Determine which rows already have corresponding Question documents.
+    const rowKey = (r: NormalizedImportRow) => `${r.questionText.trim()}||${r.examType}||${r.year}`;
+    const keys = parsedRows.map((r) => ({ key: rowKey(r), r }));
+
+    const orConditions = parsedRows.map((r) => ({
+      questionText: r.questionText.trim(),
+      examType: r.examType,
+      year: r.year,
+    }));
+
+    const existingQuestions =
+      orConditions.length > 0 ? await Question.find({ $or: orConditions }).session(session) : [];
+
+    const existingMap = new Map<string, typeof existingQuestions[0]>();
+    for (const q of existingQuestions) {
+      const k = `${q.questionText.trim()}||${q.examType}||${q.year}`;
+      existingMap.set(k, q);
+    }
+
+    const toCreateRows: Array<{ row: NormalizedImportRow; index: number }> = [];
+    const toLinkExistingIds: string[] = [];
+
+    keys.forEach(({ key, r }, idx) => {
+      const existing = existingMap.get(key);
+      if (existing) {
+        // If existing question already linked to this test, skip; otherwise mark to link.
+        const linked = existing.testIds?.map((id: any) => id.toString()).includes(createdTest._id.toString());
+        if (!linked) toLinkExistingIds.push(existing._id.toString());
+      } else {
+        toCreateRows.push({ row: r, index: idx });
+      }
+    });
+
+    // Create new questions for rows that don't exist yet.
+    const newQuestionDocs = await Question.insertMany(
+      toCreateRows.map(({ row, index }) => ({
+        examType: row.examType,
+        year: row.year,
+        questionText: row.questionText.trim(),
+        questionImageUrl: row.questionImageUrl,
+        options: row.options,
+        correctOptionIndex: row.correctOptionIndex,
+        explanation: row.explanation,
+        difficultyLevel: row.difficultyLevel,
+        status: row.status,
+        testIds: [createdTest._id],
+        ...(row.examType === EXAM_TYPES.ENTRANCE_EXAM
+          ? {
+            faculty: resolvedContexts[index].faculty,
+            departments: resolvedContexts[index].departments,
+            passage: resolvedContexts[index].passage,
+          }
+          : {
+            subject: resolvedContexts[index].subject,
+            passage: resolvedContexts[index].passage,
+          }),
+      })),
+      { session }
+    );
+
+    // Link existing questions to the test where needed.
+    if (toLinkExistingIds.length > 0) {
+      await Question.updateMany(
+        { _id: { $in: toLinkExistingIds } },
+        { $addToSet: { testIds: new mongoose.Types.ObjectId(createdTest._id) } },
+        { session }
+      );
+    }
+
+    // Fetch up-to-date existing questions that were linked so we can return them.
+    const newlyLinkedExisting =
+      toLinkExistingIds.length > 0
+        ? await Question.find({ _id: { $in: toLinkExistingIds } }).session(session)
+        : [];
+
+    // Update test metadata: title and totalQuestions increment.
+    const totalAdded = newQuestionDocs.length + newlyLinkedExisting.length;
+    await Test.findByIdAndUpdate(
+      createdTest._id,
+      {
+        $set: {
+          title: testName,
+          testCode,
+          examType: firstRow.examType,
+          year: firstRow.year,
+          testType: firstRow.testType,
+          access: firstRow.access,
+          ...resolvedContexts[0],
+        },
+        $inc: { totalQuestions: totalAdded },
+      },
+      { session }
+    );
+
+    return {
+      test: await Test.findById(createdTest._id).session(session),
+      questions: [...newlyLinkedExisting, ...newQuestionDocs],
+    };
+  });
+};
 
 
 const getPaginatedTestsByType = async (
@@ -84,10 +274,10 @@ const getPaginatedTestsByType = async (
 
 // ─── Create ───────────────────────────────────────────────────
 const createTest = async (payload: TCreateTestPayload): Promise<ITest> => {
-  const totalQuestions = payload.questionIds ? payload.questionIds.length : 0;
+  // Create a test record without linking questions here.
   const test = await Test.create({
     ...payload,
-    totalQuestions: totalQuestions,
+    totalQuestions: 0,
   });
   return test;
 };
@@ -118,15 +308,15 @@ const getQuestionByTestId = async (
   const limit = Number(input.limit) || 20;
   const skip = (page - 1) * limit;
 
-  // 1. Test find kora (Question IDs list-er jonno)
-  const test = await Test.findById(testId).select("questionIds title").lean();
+  // 1. Test find kora (test title er jonno)
+  const test = await Test.findById(testId).select("title").lean();
   if (!test) {
     throw new NotFoundError("Test not found");
   }
 
   // 2. Base Query setup
   const query: any = {
-    _id: { $in: test.questionIds },
+    testIds: testId,
     isActive: true
   };
 
@@ -186,7 +376,7 @@ const getQuestionByTestId = async (
 const getTestById = async (id: string): Promise<ITest> => {
   const test = await Test.findById(id)
     .populate("departments", "name slug")
-    .select("-questionIds");
+    .select("-__v");
 
   if (!test || !test.isActive) {
     throw new NotFoundError("Test not found");
@@ -201,21 +391,14 @@ const getTestWithQuestions = async (id: string) => {
     throw new NotFoundError("Test not found");
   }
 
-  // questionIds order অনুযায়ী questions fetch
+  // প্রশ্নগুলো testIds দিয়ে fetch করি, কারণ source of truth Question table.
   const questionsMap = await Question.find({
-    _id: { $in: test.questionIds },
+    testIds: id,
     isActive: true,
     status: "published",
   })
     .populate("subjects", "name slug")
     .populate("passage", "passageCode title content");
-
-  // original array order maintain করো
-  const orderedQuestions = test.questionIds
-    .map((id) =>
-      questionsMap.find((q) => q._id.toString() === id.toString())
-    )
-    .filter(Boolean);
 
   return {
     test: {
@@ -228,7 +411,7 @@ const getTestWithQuestions = async (id: string) => {
       durationMinutes: test.durationMinutes,
       totalQuestions: test.totalQuestions,
     },
-    questions: orderedQuestions,
+    questions: questionsMap,
   };
 };
 
@@ -264,7 +447,11 @@ const getLinkableQuestions = async (
   if (filter.departments) query.departments = filter.departments;
   if (filter.status) query.status = filter.status;
 
-  const linkedIds = test.questionIds.map((id) => id.toString());
+  const linkedQuestions = await Question.find({
+    testIds: testId,
+    isActive: true,
+  }).select("_id");
+  const linkedIds = new Set(linkedQuestions.map((question) => question._id.toString()));
 
   const questions = await Question.find(query)
     .populate("subjects", "name slug")
@@ -274,7 +461,7 @@ const getLinkableQuestions = async (
   // প্রতিটা question এ isLinked flag যোগ করো
   return questions.map((q) => ({
     ...q.toObject(),
-    isLinked: linkedIds.includes(q._id.toString()),
+    isLinked: linkedIds.has(q._id.toString()),
   }));
 };
 
@@ -288,7 +475,12 @@ const linkQuestions = async (testId: string, questionIds: string[]) => {
   }
 
   // duplicate check
-  const existingIds = test.questionIds.map((id) => id.toString());
+  const existingQuestions = await Question.find({
+    testIds: testId,
+    _id: { $in: questionIds },
+  }).select("_id");
+
+  const existingIds = existingQuestions.map((question) => question._id.toString());
   const duplicates = questionIds.filter((id) => existingIds.includes(id));
   if (duplicates.length > 0) {
     throw new BadRequestError(
@@ -309,12 +501,16 @@ const linkQuestions = async (testId: string, questionIds: string[]) => {
 
   const newIds = validQuestions.map((q) => q._id as Types.ObjectId);
 
+  await Question.updateMany(
+    { _id: { $in: newIds } },
+    { $addToSet: { testIds: new mongoose.Types.ObjectId(testId) } }
+  );
+
   await Test.findByIdAndUpdate(testId, {
-    $push: { questionIds: { $each: newIds } },
     $inc: { totalQuestions: newIds.length },
   });
 
-  return Test.findById(testId).select("-questionIds");
+  return Test.findById(testId).select("-__v");
 };
 
 // ─── Remove Question ──────────────────────────────────────────
@@ -326,19 +522,24 @@ const removeQuestion = async (testId: string, questionId: string) => {
     throw new BadRequestError("Cannot modify a published test");
   }
 
-  const exists = test.questionIds.some(
-    (id) => id.toString() === questionId
-  );
+  const exists = await Question.exists({
+    _id: questionId,
+    testIds: testId,
+    isActive: true,
+  });
   if (!exists) {
     throw new BadRequestError("Question not linked to this test");
   }
 
+  await Question.findByIdAndUpdate(questionId, {
+    $pull: { testIds: new mongoose.Types.ObjectId(testId) },
+  });
+
   await Test.findByIdAndUpdate(testId, {
-    $pull: { questionIds: new mongoose.Types.ObjectId(questionId) },
     $inc: { totalQuestions: -1 },
   });
 
-  return Test.findById(testId).select("-questionIds");
+  return Test.findById(testId).select("-__v");
 };
 
 // ─── Reorder Questions ────────────────────────────────────────
@@ -350,26 +551,8 @@ const reorderQuestions = async (testId: string, orderedIds: string[]) => {
     throw new BadRequestError("Cannot modify a published test");
   }
 
-  // same set of questions কিনা validate
-  const existingSet = new Set(test.questionIds.map((id) => id.toString()));
-  const incomingSet = new Set(orderedIds);
-
-  if (
-    existingSet.size !== incomingSet.size ||
-    ![...existingSet].every((id) => incomingSet.has(id))
-  ) {
-    throw new BadRequestError(
-      "orderedIds must contain exactly the same questions as currently linked"
-    );
-  }
-
-  const reordered = orderedIds.map(
-    (id) => new mongoose.Types.ObjectId(id)
-  );
-
-  await Test.findByIdAndUpdate(testId, { questionIds: reordered });
-
-  return Test.findById(testId).select("-questionIds");
+  // No stored order exists when Question.testIds is the source of truth.
+  throw new BadRequestError("Reordering is not supported when testIds are stored on questions only");
 };
 
 // ─── Publish ──────────────────────────────────────────────────
@@ -377,7 +560,12 @@ const publishTest = async (id: string): Promise<ITest> => {
   const test = await Test.findById(id);
   if (!test || !test.isActive) throw new NotFoundError("Test not found");
 
-  if (test.questionIds.length === 0) {
+  const linkedQuestionCount = await Question.countDocuments({
+    testIds: id,
+    isActive: true,
+  });
+
+  if (linkedQuestionCount === 0) {
     throw new BadRequestError("Cannot publish a test with no questions");
   }
 
@@ -415,6 +603,7 @@ const deleteTest = async (id: string): Promise<void> => {
 
 export const testService = {
   createTest,
+  importTestsFromCsvFile,
   getAllOfficialTests,
   getAllAdditionalTests,
   getTestById,
@@ -426,5 +615,5 @@ export const testService = {
   publishTest,
   updateTest,
   deleteTest,
-  getQuestionByTestId
+  getQuestionByTestId,
 };
