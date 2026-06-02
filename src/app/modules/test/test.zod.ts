@@ -109,7 +109,7 @@ export const importTestCsvRowSchema = z.object({
     status: z.enum([QUERSTION_STATUS.DRAFT, QUERSTION_STATUS.PUBLISHED], { message: "Invalid question status" }).default(QUERSTION_STATUS.PUBLISHED),
     faculty: z.string({ message: "Faculty is required for provime" }).optional(),
     departments: z.array(z.string({ message: "Department must be a string" })).optional(),
-    subjects: z.string({ message: "Subject is required for semi_matura or matura" }).optional(),
+    subject: z.string({ message: "Subject is required for semi_matura or matura" }).optional(),
     passage: z.string({ message: "Passage must be a string" }).optional(),
 }).refine((data) => data.correctOptionIndex < data.options.length, {
     message: "correctOptionIndex is out of range",
@@ -128,8 +128,8 @@ export const importTestCsvRowSchema = z.object({
     }
 
     if (data.examType === EXAM_TYPES.MATURE || data.examType === EXAM_TYPES.SEMIMATURE) {
-        if (!data.subjects) {
-            ctx.addIssue({ code: "custom", path: ["subjects"], message: "Subject is required when exam type is semi_matura or matura" });
+        if (!data.subject) {
+            ctx.addIssue({ code: "custom", path: ["subject"], message: "Subject is required when exam type is semi_matura or matura" });
         }
         if (data.faculty) {
             ctx.addIssue({ code: "custom", path: ["faculty"], message: "Faculty is not allowed when exam type is semi_matura or matura" });

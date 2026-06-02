@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
-import { ACCESS_TYPES, EXAM_TYPES, TEST_TYPES } from "../../../interfaces";
-import { QUERSTION_DIFFICULTY, QUERSTION_STATUS, SOURCE_TYPES, } from "./question.constant";
+import { EXAM_TYPES} from "../../../interfaces";
+import { QUERSTION_DIFFICULTY, QUERSTION_STATUS } from "./question.constant";
 import { IOption, IQuestion } from "./question.interface";
 
 
@@ -21,12 +21,12 @@ const QuestionSchema = new Schema<IQuestion>(
         subject: { type: Schema.Types.ObjectId, ref: "Subject" },
         faculty: { type: Schema.Types.ObjectId, ref: "Faculty" },
         departments: [{ type: Schema.Types.ObjectId, ref: "Department" }],
-        passage: { type: Schema.Types.ObjectId, ref: "Passage" },
+        passage: { type: Schema.Types.ObjectId, ref: "Passage" , default: null},
         questionText: { type: String, required: true },
-        questionImageUrl: { type: String },
-        options: { type: [OptionSchema], required: true },
+        questionImageUrl: { type: String , default: null },
+        options: { type: [OptionSchema], required: true,  _id: false },
         correctOptionIndex: { type: Number, required: true },
-        explanation: { type: String },
+        explanation: { type: String , default: null },
         difficultyLevel: {
             type: String,
             enum: Object.values(QUERSTION_DIFFICULTY),

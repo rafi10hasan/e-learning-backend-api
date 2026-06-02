@@ -36,13 +36,15 @@ const importTestsFromCsvIntoDb = asyncHandler(async (req: Request, res: Response
   });
 });
 
+
 const getAllOfficialTestsIntoDb = asyncHandler(async (req: Request, res: Response) => {
 
   const { examType, departments, page, limit } = req.query;
   const result = await testService.getAllOfficialTests(
     {
-      category: examType as string,
-      departments: departments as string,
+      examType: examType as string,
+      faculty: req.query.faculty as string,
+      departments: departments as string[],
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 20,
     } as any);
@@ -56,10 +58,11 @@ const getAllOfficialTestsIntoDb = asyncHandler(async (req: Request, res: Respons
 });
 
 const getAllAdditionalTestsIntoDb = asyncHandler(async (req: Request, res: Response) => {
-  const { category, departments, page, limit } = req.query;
+  const { examType, departments, page, limit, faculty } = req.query;
   const result = await testService.getAllAdditionalTests({
-    category: category as string,
-    departments: departments as string,
+    examType: examType as string,
+    faculty: faculty as string,
+    departments: departments as string[],
     page: page ? Number(page) : 1,
     limit: limit ? Number(limit) : 20,
   } as any);
@@ -75,14 +78,7 @@ const getAllAdditionalTestsIntoDb = asyncHandler(async (req: Request, res: Respo
 const getQuestionsByTestIdIntoDb = asyncHandler(async (req: Request, res: Response) => {
   const { testId } = req.params;
 
-  // URL example: /tests/69c75ef.../questions?department=nursing&page=1&limit=20
-  const { department, page, limit } = req.query;
-
-  const result = await testService.getQuestionByTestId(testId, {
-    department: department as string, // User ekhane 'nursing' ba 'Nursing' pathabe
-    page: page ? Number(page) : 1,
-    limit: limit ? Number(limit) : 20,
-  });
+  const result = await testService.getQuestionsByTestId(testId, req.query);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,

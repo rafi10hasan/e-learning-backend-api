@@ -7,6 +7,7 @@ import Department from "../department/department.model";
 import Faculty from "../faculty/faculty.model";
 import Passage from "../passage/passage.model";
 import Subject from "../subject/subject.model";
+import Test from "./test.model";
 
 export type NormalizedImportRow = {
     testCode: string;
@@ -25,7 +26,7 @@ export type NormalizedImportRow = {
     status?: string;
     faculty?: string;
     departments?: string[];
-    subjects?: string;
+    subject?: string;
     passage?: string;
 };
 
@@ -139,6 +140,7 @@ export const resolveSubjectId = async (rawValue: string, examType: string) => {
     return doc?._id ?? null;
 };
 
+// Build the question context (faculty, department, subject, passage) based on the exam type and CSV row data.
 export const buildQuestionContext = async (row: NormalizedImportRow) => {
     // Resolve the question ownership fields from the exam type.
     console.log(`Building question context for exam type: ${row.examType}`);
@@ -164,21 +166,23 @@ export const buildQuestionContext = async (row: NormalizedImportRow) => {
         if (departmentIds.length === 0) {
             throw new BadRequestError("At least one valid department is required for entrance exam questions");
         }
-        const subjectId = await resolveDocumentId(Subject, row.subjects ?? "", { examType: row.examType });
-
+        const subjectId = await resolveSubjectId(row.subject ?? "", row.examType);
+        if (!subjectId) {
+            throw new BadRequestError(`Subject not found: ${row.subject ?? "empty"}`);
+        }
         const passageId = row.passage ? await resolveDocumentId(Passage, row.passage, { faculty: facultyId }) : null;
 
         return {
             faculty: facultyId,
+            subject: subjectId,
             departments: departmentIds,
             passage: passageId ?? undefined,
-            subject: subjectId ?? undefined,
         };
     }
 
-    const subjectId = await resolveSubjectId(row.subjects ?? "", row.examType);
+    const subjectId = await resolveSubjectId(row.subject ?? "", row.examType);
     if (!subjectId) {
-        throw new BadRequestError(`Subject not found: ${row.subjects ?? "empty"}`);
+        throw new BadRequestError(`Subject not found: ${row.subject ?? "empty"}`);
     }
 
     const passageId = row.passage ? await resolveDocumentId(Passage, row.passage, { examType: row.examType }) : null;
@@ -216,7 +220,103 @@ export const normalizeImportRow = (row: Record<string, unknown>) => {
         status: getRowValue(row, "status"),
         faculty: getRowValue(row, "faculty"),
         departments: getRowValuesByPrefix(row, "department"),
-        subjects: getRowValue(row, "subject"),
+        subject: getRowValue(row, "subject"),
         passage: getRowValue(row, "passage"),
+    };
+};
+
+// Main function to get paginated tests by type with optional filters.
+export const getPaginatedTestsByType = async (
+    testType: string,
+    input: {
+        examType?: string;
+        faculty?: string;
+        departments?: string[];  // department names array
+        page?: number;
+        limit?: number;
+    }
+) => {
+    const page = Number(input.page) || 1;
+    const limit = Number(input.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    console.log({ input })
+    const query: any = {
+        testType,
+        isActive: true,
+    };
+
+    const departments = input.departments
+        ? Array.isArray(input.departments)
+            ? input.departments
+            : [input.departments]
+        : [];
+
+    if (input.examType) {
+        query.examType = input.examType;
+    }
+
+
+    if (input.examType === EXAM_TYPES.ENTRANCE_EXAM && input.faculty) {
+        const facultyDoc = await Faculty.findOne({
+            name: { $regex: new RegExp(`^${escapeRegExp(input.faculty)}$`, "i") },
+        }).select("_id");
+        console.log(`Resolved faculty "${input.faculty}" to ID: ${facultyDoc?._id}`);
+        query.faculty = facultyDoc?._id;
+    }
+
+
+    // Department name diye id lookup
+    if (departments && departments.length > 0) {
+        const foundDepartments = await Department.find({
+            name: {
+                $in: departments.map(
+                    (dept) => new RegExp(`^${dept}$`, "i")  // case-insensitive exact match
+                ),
+            },
+        })
+            .select("_id")
+            .lean();
+
+        const departmentIds = foundDepartments.map((d) => d._id);
+
+        // Kono department match na korle empty result return koro
+        if (departmentIds.length === 0) {
+            return {
+                data: [],
+                meta: { total: 0, page, limit, totalPages: 0 },
+            };
+        }
+
+        query.departments = { $in: departmentIds };
+    }
+
+    const [tests, total] = await Promise.all([
+        Test.find(query)
+            .select("access title totalQuestions totalSubjects year")
+            .sort({ year: -1, createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        Test.countDocuments(query),
+    ]);
+
+    const formattedTests = tests.map((test) => ({
+        testId: test._id,
+        title: test.title,
+        totalQuestions: test.totalQuestions,
+        totalSubjects: test.totalSubjects,
+        access: test.access,
+        year: test.year,
+    }));
+
+    return {
+        data: formattedTests,
+        meta: {
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        },
     };
 };

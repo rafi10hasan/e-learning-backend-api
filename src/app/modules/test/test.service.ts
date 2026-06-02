@@ -6,7 +6,7 @@ import Department from "../department/department.model";
 import Question from "../question/question.model";
 import { ITest } from "./test.interface";
 import Test from "./test.model";
-import { buildQuestionContext, NormalizedImportRow, normalizeImportRow, readCsvRows } from "./test.utils";
+import { buildQuestionContext, getPaginatedTestsByType, NormalizedImportRow, normalizeImportRow, readCsvRows } from "./test.utils";
 import { importTestCsvRowSchema, TCreateTestPayload } from "./test.zod";
 
 
@@ -22,6 +22,8 @@ interface CreateTestPayload {
   durationMinutes?: number;
 }
 
+
+// import tests from csv file
 const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
   // Parse the CSV file into rows first.
   const rawRows = await readCsvRows(fileBuffer);
@@ -44,8 +46,13 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
   });
 
   const firstRow = parsedRows[0];
+  const uniqueExamTypes = new Set(parsedRows.map((row) => row.examType));
   const testCode = parsedRows.find((row) => row.testCode.trim().length > 0)?.testCode.trim();
   const testName = parsedRows.find((row) => row.testName.trim().length > 0)?.testName.trim();
+
+  if (uniqueExamTypes.size !== 1) {
+    throw new BadRequestError("All CSV rows must have the same examType");
+  }
 
   if (!testCode) {
     throw new BadRequestError("testCode is required in at least one CSV row");
@@ -69,6 +76,50 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
     throw new BadRequestError("All non-empty testName values must match");
   }
 
+  if (firstRow.examType === EXAM_TYPES.ENTRANCE_EXAM) {
+    const faculty = parsedRows.find((row) => (row.faculty ?? "").trim().length > 0)?.faculty?.trim() ?? "";
+
+    if (!faculty) {
+      throw new BadRequestError("faculty is required for provime CSV rows");
+    }
+
+    const mismatchedFaculty = parsedRows.find(
+      (row) => {
+        const currentFaculty = (row.faculty ?? "").trim();
+        return currentFaculty.length > 0 && currentFaculty !== faculty;
+      }
+    );
+    if (mismatchedFaculty) {
+      throw new BadRequestError("All provime CSV rows must have the same faculty");
+    }
+
+    const missingDepartments = parsedRows.find((row) => !row.departments || row.departments.length === 0);
+    if (missingDepartments) {
+      throw new BadRequestError("Each provime CSV row must have at least one department");
+    }
+
+    // const subjectRow = parsedRows.find((row) => (row.subjects ?? "").trim().length > 0);
+    // if (subjectRow) {
+    //   throw new BadRequestError("subject is not allowed for provime CSV rows");
+    // }
+  } else {
+    // For matura / semi_matura, each row must specify a subject (tests may include multiple subjects).
+    const missingSubject = parsedRows.find((row) => (row.subject ?? "").trim().length === 0);
+    if (missingSubject) {
+      throw new BadRequestError("Each matura or semi_matura CSV row must have a subject");
+    }
+
+    const invalidFaculty = parsedRows.find((row) => (row.faculty ?? "").trim().length > 0);
+    if (invalidFaculty) {
+      throw new BadRequestError("faculty is not allowed for matura or semi matura CSV rows");
+    }
+
+    const invalidDepartments = parsedRows.find((row) => row.departments && row.departments.length > 0);
+    if (invalidDepartments) {
+      throw new BadRequestError("departments are not allowed for matura or semi matura CSV rows");
+    }
+  }
+
   // Prevent duplicate question text inside the same CSV file.
   const duplicateQuestion = parsedRows.find(
     (row, index) => parsedRows.findIndex((item) => item.questionText === row.questionText) !== index
@@ -78,6 +129,9 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
   }
 
   const resolvedContexts = await Promise.all(parsedRows.map((row) => buildQuestionContext(row)));
+
+  console.log({resolvedContexts});
+
   return withTransaction(async (session) => {
     const existingTest = await Test.findOne({ testCode }).session(session);
 
@@ -93,6 +147,10 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
       throw new BadRequestError(`Test already exists with a different exam type, year, test type or access: ${testCode}`);
     }
 
+    if (existingTest && existingTest.examType !== firstRow.examType) {
+      throw new BadRequestError(`Test already exists with a different examType: ${testCode}`);
+    }
+
     const createdTest = existingTest ?? (await Test.create(
       [
         {
@@ -100,6 +158,7 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
           testCode,
           examType: firstRow.examType,
           year: firstRow.year,
+          subjects: [...new Set(resolvedContexts.map(item => item.subject.toString()))].map(id => new Types.ObjectId(id)),
           testType: firstRow.testType,
           access: firstRow.access,
           totalQuestions: 0,
@@ -159,6 +218,7 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
           ? {
             faculty: resolvedContexts[index].faculty,
             departments: resolvedContexts[index].departments,
+            subject: resolvedContexts[index].subject,
             passage: resolvedContexts[index].passage,
           }
           : {
@@ -211,66 +271,6 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
 };
 
 
-const getPaginatedTestsByType = async (
-  testType: string,
-  input: {
-    examType?: string;
-    departments?: string;
-    page?: number;
-    limit?: number
-  }
-) => {
-  const page = Number(input.page) || 1;
-  const limit = Number(input.limit) || 20;
-  const skip = (page - 1) * limit;
-
-  // 1. Dynamic Filter Query Banano
-  const query: any = {
-    testType: testType,
-    isActive: true
-  };
-
-  // Jodi examType thake (Mature/Semimature/Provime)
-  if (input.examType) {
-    query.examType = input.examType;
-  }
-
-  // Provime-er jonno jodi specific department thake
-  if (input.departments) {
-    query.departments = input.departments;
-  }
-
-  // 2. Parallel Database Operations
-  const [tests, total] = await Promise.all([
-    Test.find(query)
-      .select("access title totalQuestions totalSubjects year")
-      .sort({ year: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Test.countDocuments(query)
-  ]);
-
-  const formattedTests = tests.map(test => ({
-    testId: test._id,
-    title: test.title,
-    totalQuestions: test.totalQuestions,
-    totalSubjects: test.totalSubjects,
-    access: test.access,
-    year: test.year
-  }));
-
-  return {
-    data: formattedTests,
-    meta: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
-};
-
 
 // ─── Create ───────────────────────────────────────────────────
 const createTest = async (payload: TCreateTestPayload): Promise<ITest> => {
@@ -284,85 +284,175 @@ const createTest = async (payload: TCreateTestPayload): Promise<ITest> => {
 
 
 
-// Main functions
 const getAllOfficialTests = async (input: {
-  category?: string;
-  departments?: string; page?: number; limit?: number
+  examType?: string;
+  faculty?: string;
+  departments?: string[];   // string[] now
+  page?: number;
+  limit?: number;
 }) => {
   return getPaginatedTestsByType(TEST_TYPES.OFFICIAL, input);
 };
 
-// get all additioinal tests
 const getAllAdditionalTests = async (input: {
-  category?: string;
-  departments?: string; page?: number; limit?: number
+  examType?: string;
+  faculty?: string;
+  departments?: string[];   // string[] now
+  page?: number;
+  limit?: number;
 }) => {
   return getPaginatedTestsByType(TEST_TYPES.ADDITIONAL, input);
 };
 
-const getQuestionByTestId = async (
+
+// get Question by test id with pagination and optional department filter
+const getQuestionsByTestId = async (
   testId: string,
-  input: { department?: string; page?: number; limit?: number }
+  input: { page?: number; limit?: number }
 ) => {
   const page = Number(input.page) || 1;
   const limit = Number(input.limit) || 20;
   const skip = (page - 1) * limit;
 
-  // 1. Test find kora (test title er jonno)
+  // 1. Test find kora
   const test = await Test.findById(testId).select("title").lean();
   if (!test) {
     throw new NotFoundError("Test not found");
   }
 
-  // 2. Base Query setup
-  const query: any = {
-    testIds: testId,
-    isActive: true
+  // Aggregation-er jonno ObjectId casting
+  const targetTestId = new mongoose.Types.ObjectId(testId);
+
+  // 2. Base Match Query Setup
+  const matchQuery: any = {
+    testIds: { $in: [targetTestId] },
+    isActive: true,
+    status: "published"
   };
 
-  // 3. Department Name/Slug theke ID ber kora
-  if (input.department) {
-    const departmentDoc = await Department.findOne({
-      $or: [
-        { name: input.department },
-        { slug: input.department }
-      ]
-    }).select("_id").lean();
 
-    if (!departmentDoc) {
-      // Jodi department na paoya jay, tahole empty array return korbe
-      return {
-        testTitle: test.title,
-        data: [],
-        meta: { total: 0, page, limit, totalPages: 0 }
-      };
+  // 4. Aggregation Pipeline
+  const aggregatePipeline: any[] = [
+    // Stage 1: Filter Questions
+    { $match: matchQuery },
+
+    // Stage 2: CRITICAL SORTING (Jeno same passage-er shob prosno por por thake)
+    { 
+      $sort: { 
+        subject: 1,
+        passage: 1, // Same passage group ekshathe thakbe
+        year: -1, 
+        _id: 1 
+      } 
+    },
+
+    // Stage 3: Populate Passage Collection
+    {
+      $lookup: {
+        from: "passages", // Database collection name string check kore niben
+        localField: "passage",
+        foreignField: "_id",
+        as: "passageDetails"
+      }
+    },
+
+    // Stage 4: Unwind object conversion
+    {
+      $unwind: {
+        path: "$passageDetails",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+
+    // Stage 5: Facet Pagination & Field Projecting
+    {
+      $facet: {
+        metadata: [{ $count: "total" }],
+        data: [
+          { $skip: skip },
+          { $limit: limit },
+          {
+            $project: {
+              _id: 0,
+              questionId: "$_id",
+              questionText: 1,
+              options: 1,
+              questionImage: { $ifNull: ["$questionImageUrl", null] },
+              year: 1,
+              correctOptionIndex: 1,
+              explanation: 1,
+              // Initial Passage details map (Id ti loop processing er jonno strict lagbe)
+              passageRaw: {
+                $cond: {
+                  if: { $gt: [{ $ifNull: ["$passageDetails", 0] }, 0] },
+                  then: {
+                    _id: "$passageDetails._id",
+                    passageCode: "$passageDetails.passageCode",
+                    title: "$passageDetails.title",
+                    content: "$passageDetails.content",
+                    passageImageUrl: "$passageDetails.passageImageUrl",
+                    questionRange: "$passageDetails.questionRange"
+                  },
+                  else: null
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ];
+
+  // Aggregation execute kora
+  const aggregationResult = await Question.aggregate(aggregatePipeline);
+
+  const rawQuestions = aggregationResult[0]?.data || [];
+  const total = aggregationResult[0]?.metadata[0]?.total || 0;
+
+  // 5. TRICK LAYER: Backend control for single passage rendering
+  let lastProcessedPassageId: string | null = null;
+
+  const finalQuestions = rawQuestions.map((q: any) => {
+    const { passageRaw, ...restQuestionData } = q;
+    
+    // Jodi prosne passage thake
+    if (passageRaw && passageRaw._id) {
+      const currentPassageId = passageRaw._id.toString();
+
+      // Jodi eiti ekta NOTUN passage hoy (ja ager prosne chilo na)
+      if (currentPassageId !== lastProcessedPassageId) {
+        lastProcessedPassageId = currentPassageId; // Track ID updated
+
+        return {
+          ...restQuestionData,
+          passage: passageRaw // Full passage details prothom prosne jabe
+        };
+      } else {
+        // Same passage repeat hole object structure intact thakbe kintu data content/image completely hidden (null) thakbe
+        return {
+          ...restQuestionData,
+          passage: {
+            _id: passageRaw._id,
+            passageCode: passageRaw.passageCode,
+            title: null,
+            content: null,
+            passageImageUrl: null,
+            questionRange: passageRaw.questionRange
+          }
+        };
+      }
     }
 
-    // Found ID query-te set kora
-    query.departments = departmentDoc._id;
-  }
-
-  // 4. Parallel Operations
-  const [questions, total] = await Promise.all([
-    Question.find(query)
-      .select("questionText options year departments questionImageUrl correctOptionIndex explanation")
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Question.countDocuments(query)
-  ]);
+    // Passage na thakle direct null
+    return {
+      ...restQuestionData,
+      passage: null
+    };
+  });
 
   return {
     testTitle: test.title,
-    data: questions.map(q => ({
-      questionId: q._id,
-      questionText: q.questionText,
-      options: q.options,
-      questionImage: q.questionImageUrl || null,
-      year: q.year,
-      correctOptionIndex: q.correctOptionIndex,
-      explanation: q.explanation
-    })),
+    data: finalQuestions,
     meta: {
       total,
       page,
@@ -615,5 +705,5 @@ export const testService = {
   publishTest,
   updateTest,
   deleteTest,
-  getQuestionByTestId,
+  getQuestionsByTestId,
 };
