@@ -1,13 +1,21 @@
+import mongoose from "mongoose";
 
-/*
+
 
 const quizAttemptSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  department: { type: String, required: true },
-  subject: { type: String, required: true },
-  questionIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Question' }], 
+  title: { type: String, required: true },
+  
+  totalDurationInMinutes: { type: Number, default: 60 },
+  secondsElapsedSoFar: { type: Number, default: 0 },
+  
   isCompleted: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
-});
+  startedAt: { type: Date, default: Date.now }
+},
+ {
+    timestamps: true,
+    versionKey: false,
+ }
+);
 
-*/
+module.exports = mongoose.model('QuizAttempt', quizAttemptSchema);
