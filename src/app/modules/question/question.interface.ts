@@ -25,6 +25,7 @@ export interface IQuestion extends Document {
     departments?: Types.ObjectId[];
     passage?: Types.ObjectId;
     questionText: string;
+    access: TAccessTypes;
     questionImageUrl?: string;
     options: IOption[];
     correctOptionIndex: number;

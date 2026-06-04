@@ -3,6 +3,7 @@ import { BadRequestError } from '../../errors/request/apiError';
 
 import { sendVerificationOtp } from '../auth/auth.utils';
 import { USER_ROLE, USER_STATUS } from './user.constant';
+import { IUser } from './user.interface';
 import User from './user.model';
 import { TRegistrationPayload } from './user.validations';
 
@@ -68,7 +69,13 @@ const createAccount = async (payload: TRegistrationPayload) => {
 };
 
 
+const choosePlan = async (user: IUser, plan: string) =>{
+  user.plan = plan;
+  await user.save();
+  return null;
+};
 
 export const userService = {
-  createAccount
+  createAccount,
+  choosePlan
 };

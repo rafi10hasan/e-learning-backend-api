@@ -209,6 +209,7 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
         questionText: row.questionText.trim(),
         questionImageUrl: row.questionImageUrl,
         options: row.options,
+        access: row.access,
         correctOptionIndex: row.correctOptionIndex,
         explanation: row.explanation,
         difficultyLevel: row.difficultyLevel,

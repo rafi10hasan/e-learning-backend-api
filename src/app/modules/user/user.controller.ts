@@ -21,7 +21,21 @@ const createAccountIntoDb = asyncHandler(async (req: Request, res: Response) => 
   });
 });
 
+
+const choosePlanIntoDb = asyncHandler(async (req: Request, res: Response) => {
+  const { plan } = req.body as { plan: string };
+
+  const result = await userService.choosePlan(req.user, plan);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Plan chosen successfully',
+    data: result,
+  });
+});
+
 export const userController = {
   createAccountIntoDb,
- 
+  choosePlanIntoDb
 };

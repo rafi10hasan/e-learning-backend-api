@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { EXAM_TYPES} from "../../../interfaces";
+import { ACCESS_TYPES, EXAM_TYPES} from "../../../interfaces";
 import { QUERSTION_DIFFICULTY, QUERSTION_STATUS } from "./question.constant";
 import { IOption, IQuestion } from "./question.interface";
 
@@ -22,6 +22,11 @@ const QuestionSchema = new Schema<IQuestion>(
         faculty: { type: Schema.Types.ObjectId, ref: "Faculty" },
         departments: [{ type: Schema.Types.ObjectId, ref: "Department" }],
         passage: { type: Schema.Types.ObjectId, ref: "Passage" , default: null},
+        access: {
+            type: String,
+            enum: Object.values(ACCESS_TYPES),
+            required: true,
+        },
         questionText: { type: String, required: true },
         questionImageUrl: { type: String , default: null },
         options: { type: [OptionSchema], required: true,  _id: false },

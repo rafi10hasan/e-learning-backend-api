@@ -3,7 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 import config from '../../../config';
 import { PROVIDER, USER_ROLE, USER_STATUS } from './user.constant';
 import { IUser, IUserModel } from './user.interface';
-
+import { EXAM_TYPES } from '../../../interfaces';
 
 export const userSchema = new Schema<IUser>(
   {
@@ -45,6 +45,10 @@ export const userSchema = new Schema<IUser>(
     isSocialLogin: {
       type: Boolean,
       default: false,
+    },
+    plan: {
+      type: String,
+      enum: Object.values(EXAM_TYPES)
     },
     status: {
       type: String,

@@ -38,12 +38,12 @@ const importTestsFromCsvIntoDb = asyncHandler(async (req: Request, res: Response
 
 
 const getAllOfficialTestsIntoDb = asyncHandler(async (req: Request, res: Response) => {
-
-  const { examType, departments, page, limit } = req.query;
+ 
+  const { faculty, departments, page, limit } = req.query;
   const result = await testService.getAllOfficialTests(
     {
-      examType: examType as string,
-      faculty: req.query.faculty as string,
+      examType: req.user.plan as string,
+      faculty: faculty as string,
       departments: departments as string[],
       page: page ? Number(page) : 1,
       limit: limit ? Number(limit) : 20,
@@ -58,9 +58,9 @@ const getAllOfficialTestsIntoDb = asyncHandler(async (req: Request, res: Respons
 });
 
 const getAllAdditionalTestsIntoDb = asyncHandler(async (req: Request, res: Response) => {
-  const { examType, departments, page, limit, faculty } = req.query;
+  const { examType, faculty, departments, page, limit } = req.query;
   const result = await testService.getAllAdditionalTests({
-    examType: examType as string,
+    examType: req.user.plan as string,
     faculty: faculty as string,
     departments: departments as string[],
     page: page ? Number(page) : 1,
