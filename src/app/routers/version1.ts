@@ -7,6 +7,7 @@ import questionRouter from '../modules/question/question.route';
 import subjectRouter from '../modules/subject/subject.route';
 import testRouter from '../modules/test/test.route';
 import userRouter from '../modules/user/user.route';
+import quizRouter from '../modules/quiz-session/quiz.session.route';
 
 
 const routersVersionOne = express.Router();
@@ -49,6 +50,12 @@ const appRouters = [
     path: '/test-archive',
     router: testRouter,
   },
+
+  {
+    path: '/quiz',
+    router: quizRouter,
+  },
+
 ];
 
 appRouters.forEach((router) => {

@@ -9,9 +9,9 @@ import config from '../config';
 import jwtHelpers from '../helpers/jwtHelpers';
 
 
-import { SOCKET_EVENTS } from './socket.constant';
-import handleQuizEvents from './handleQuizEvents';
 import { USER_STATUS } from '../app/modules/user/user.constant';
+import handleQuizEvents from './handleQuizEvents';
+import { SOCKET_EVENTS } from './socket.constant';
 
 let io: ChatServer;
 
@@ -102,7 +102,7 @@ const handleConnection = async (socket: Socket) => {
 
 
   // Test notification (only available in non-production)
- 
+
 
   // Register chat and location event handlers
   handleQuizEvents(io, socket, currentUserId);
@@ -110,15 +110,16 @@ const handleConnection = async (socket: Socket) => {
   // Disconnect cleanup
   socket.on(SOCKET_EVENTS.DISCONNECT, async () => {
     console.log(`User disconnected: ${currentUserId}`);
-    const sockets = await io.in(currentUserId).fetchSockets();
   });
 };
 
 // Initialize socket server — registers middleware and connection handler ONCE
 const connectSocket = (server: HTTPServer) => {
+  console.log("Initializing Socket.io server...");
   if (!io) {
     io = new ChatServer(server, {
       cors: {
+        origin: "*",
         methods: ['GET', 'POST'],
         allowedHeaders: ['Authorization', 'Content-Type'],
       },
@@ -143,4 +144,5 @@ const getSocketIO = () => {
   return io;
 };
 
-export { connectSocket, getSocketIO};
+export { connectSocket, getSocketIO };
+

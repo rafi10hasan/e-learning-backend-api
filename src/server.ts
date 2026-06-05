@@ -4,6 +4,7 @@ import app from './app';
 import config from './config';
 
 import seedingAdmin from './utilities/seeding';
+import { connectSocket } from './socket/connectSocket';
 
 let server: HTTPServer;
 
@@ -26,7 +27,7 @@ const runServer = async () => {
 
   seedingAdmin();
   // initialize socket after server is created
-
+  connectSocket(server);
 };
 
 // handle unhandled rejection
