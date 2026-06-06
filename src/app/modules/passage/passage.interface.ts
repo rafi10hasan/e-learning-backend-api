@@ -7,6 +7,10 @@ export interface IQuestionRange {
   to: number;
 }
 
+export interface PassageFiles {
+    passage_image?: Express.Multer.File[];
+}
+
 export interface IPassage extends Document {
   passageCode: string;
   title: string;

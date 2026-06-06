@@ -21,8 +21,8 @@ departmentRouter.post(
 );
 
 departmentRouter.get(
-    '/retrieve/:faculty',
-    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+    '/retrieve/:facultyId',
+    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN, USER_ROLE.STUDENT),
     departmentController.getAllDepartments,
 );
 export default departmentRouter;

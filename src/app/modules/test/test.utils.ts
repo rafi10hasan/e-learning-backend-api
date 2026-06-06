@@ -1,7 +1,7 @@
 import csv from "csv-parser";
 import mongoose from "mongoose";
 import { Readable } from "stream";
-import { EXAM_TYPES } from "../../../interfaces";
+import { EXAM_TYPES, TAccessTypes } from "../../../interfaces";
 import { BadRequestError } from "../../errors/request/apiError";
 import Department from "../department/department.model";
 import Faculty from "../faculty/faculty.model";
@@ -16,7 +16,7 @@ export type NormalizedImportRow = {
     year: number;
     source: string;
     testType: string;
-    access: string;
+    access: TAccessTypes;
     questionText: string;
     questionImageUrl?: string;
     options: { text: string; imageUrl?: string }[];
@@ -293,20 +293,21 @@ export const getPaginatedTestsByType = async (
 
     const [tests, total] = await Promise.all([
         Test.find(query)
-            .select("access title totalQuestions totalSubjects year")
+            .select("access title totalQuestions subjects year")
             .sort({ year: -1, createdAt: -1 })
             .skip(skip)
             .limit(limit)
             .lean(),
         Test.countDocuments(query),
     ]);
-
+   
     const formattedTests = tests.map((test) => ({
         testId: test._id,
         title: test.title,
         totalQuestions: test.totalQuestions,
-        totalSubjects: test.totalSubjects,
+        totalSubjects: test.subjects?.length || 0,
         access: test.access,
+        isLock: test.access === "premium" ? true : false,
         year: test.year,
     }));
 

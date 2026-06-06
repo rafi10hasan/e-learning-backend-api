@@ -3,7 +3,6 @@ import { StatusCodes } from 'http-status-codes';
 import sendResponse from '../../../shared/sendResponse';
 
 import asyncHandler from '../../../shared/asynchandler';
-import { TProfileImage } from './user.interface';
 import { userService } from './user.service';
 
 
@@ -23,9 +22,8 @@ const createAccountIntoDb = asyncHandler(async (req: Request, res: Response) => 
 
 
 const choosePlanIntoDb = asyncHandler(async (req: Request, res: Response) => {
-  const { plan } = req.body as { plan: string };
-
-  const result = await userService.choosePlan(req.user, plan);
+  
+  const result = await userService.choosePlan(req.user, req.body);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -35,7 +33,21 @@ const choosePlanIntoDb = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
+
+const getUserPlanIntoDb = asyncHandler(async (req: Request, res: Response) => {
+
+  const result = await userService.getUserPlan(req.user);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Plan retrieved successfully',
+    data: result,
+  });
+});
+
 export const userController = {
   createAccountIntoDb,
-  choosePlanIntoDb
+  choosePlanIntoDb,
+  getUserPlanIntoDb
 };

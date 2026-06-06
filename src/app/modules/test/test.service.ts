@@ -1,8 +1,7 @@
 import mongoose, { Types } from "mongoose";
 import withTransaction from "../../../helpers/withTransaction";
-import { EXAM_TYPES, TEST_TYPES } from "../../../interfaces";
+import { EXAM_TYPES, TAccessTypes, TEST_TYPES, TExamTypes, TTestTypes } from "../../../interfaces";
 import { BadRequestError, NotFoundError } from "../../errors/request/apiError";
-import Department from "../department/department.model";
 import Question from "../question/question.model";
 import { ITest } from "./test.interface";
 import Test from "./test.model";
@@ -13,12 +12,12 @@ import { importTestCsvRowSchema, TCreateTestPayload } from "./test.zod";
 
 interface CreateTestPayload {
   title: string;
-  examType: "semi_matura" | "matura" | "provime";
+  examType: TExamTypes;
   year: number;
   structureType: string;
   departments?: string;
-  testType: "official" | "additional";
-  access: "free" | "premium";
+  testType: TTestTypes;
+  access: TAccessTypes;
   durationMinutes?: number;
 }
 
@@ -35,6 +34,7 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
   // Validate every row with zod before touching the database.
   const parsedRows = rawRows.map((row, index) => {
     const normalizedRow = normalizeImportRow(row);
+    console.log({normalizedRow});
     const validation = importTestCsvRowSchema.safeParse(normalizedRow);
 
     if (!validation.success) {

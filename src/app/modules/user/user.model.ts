@@ -5,6 +5,7 @@ import { PROVIDER, USER_ROLE, USER_STATUS } from './user.constant';
 import { IUser, IUserModel } from './user.interface';
 import { EXAM_TYPES } from '../../../interfaces';
 
+
 export const userSchema = new Schema<IUser>(
   {
     email: {
@@ -48,12 +49,19 @@ export const userSchema = new Schema<IUser>(
     },
     plan: {
       type: String,
-      enum: Object.values(EXAM_TYPES)
+      enum: Object.values(EXAM_TYPES),
+      required: false
     },
     status: {
       type: String,
       enum: Object.values(USER_STATUS),
       default: USER_STATUS.PENDING,
+    },
+    faculty: { type: String, default: null },
+    subscription:{
+      type: Schema.Types.ObjectId,
+      ref: 'Subscription',
+      default: null
     },
     disabledAt: {
       type: Date,

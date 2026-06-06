@@ -19,8 +19,8 @@ const createDepartmentIntodb = asyncHandler(async (req: Request, res: Response) 
 
 
 const getAllDepartments = asyncHandler(async (req: Request, res: Response) => {
-    const { faculty } = req.params;
-    const result = await departmentService.getAllDepartmentByfaculty(faculty);
+    const { facultyId } = req.params;
+    const result = await departmentService.getAllDepartmentByfaculty(facultyId);
 
     sendResponse(res, {
         statusCode: StatusCodes.OK,

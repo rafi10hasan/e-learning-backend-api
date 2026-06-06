@@ -29,6 +29,8 @@ export interface IUser extends Document {
   passwordResetExpiry?: Date;
   isOtpVerified?: boolean;
   plan?: string;
+  faculty?: string;
+  subscription?: Types.ObjectId;
   verificationOtp?: string;
   verificationOtpExpiry?: Date;
   role: TUserRole;

@@ -24,7 +24,7 @@ facultyRouter.post(
 
 facultyRouter.get(
     '/retrieve',
-    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN, USER_ROLE.STUDENT),
     facultyController.getAllFaculties,
 );
 export default facultyRouter;

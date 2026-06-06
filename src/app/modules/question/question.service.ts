@@ -21,7 +21,7 @@ const createQuestion = async (
 
     if (payload.examType && (payload.examType === EXAM_TYPES.MATURE || payload.examType === EXAM_TYPES.SEMIMATURE)) {
 
-        const isExistSubject = await Subject.findOne({ _id: payload.subjects, examType: payload.examType }).select("_id");
+        const isExistSubject = await Subject.findOne({ _id: payload.subject, examType: payload.examType }).select("_id");
 
         if (!isExistSubject) {
             throw new BadRequestError("Subject not found for the given exam type");

@@ -67,7 +67,7 @@ export const createQuestionSchema = z
       .int({ message: "Year must be an integer" })
       .min(2000, { message: "Year must be 2000 or later" })
       .max(new Date().getFullYear(), { message: "Year cannot be in the future" }),
-    subjects: z.string({ message: "Subject ID must be a string" }).optional(),
+    subject: z.string({ message: "Subject ID must be a string" }).optional(),
     faculty: z.string({ message: "Faculty ID must be a string" }).optional(),
     departments: z.string({ message: "Department ID must be a string" }).optional(),
     passage: z.string({ message: "Passage ID must be a string" }).optional(),
@@ -105,7 +105,7 @@ export const createQuestionSchema = z
   }).superRefine((data, ctx) => {
 
     if (data.examType === "semi_matura" || data.examType === "matura") {
-      if (!data.subjects) {
+      if (!data.subject) {
         ctx.addIssue({
           code: 'custom',
           maximum: 1,
@@ -149,7 +149,7 @@ export const createQuestionSchema = z
         });
       }
 
-      if (data.subjects) {
+      if (data.subject) {
         ctx.addIssue({
           code: 'custom',
           maximum: 1,

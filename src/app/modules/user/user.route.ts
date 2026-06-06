@@ -15,11 +15,18 @@ userRouter.post(
   userController.createAccountIntoDb,
 );
 
-
 userRouter.post(
   '/choose-plan',
   authMiddleware(USER_ROLE.STUDENT),
   userController.choosePlanIntoDb,
 );
+
+
+userRouter.get(
+  '/plan',
+  authMiddleware(USER_ROLE.STUDENT),
+  userController.getUserPlanIntoDb,
+);
+
 
 export default userRouter;

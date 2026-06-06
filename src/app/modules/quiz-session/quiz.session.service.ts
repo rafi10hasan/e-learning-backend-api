@@ -62,7 +62,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
     ...(!isPremium && { access: "free" }),
   };
 
-  if (year)              baseFilter.year            = year;
+  if (year)              baseFilter.year            = Number(year);
   if (difficultyLevel)   baseFilter.difficultyLevel  = difficultyLevel;
   if (facultyId)         baseFilter.faculty          = new Types.ObjectId(facultyId);
   if (departmentIds?.length) {
@@ -70,7 +70,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
       $in: departmentIds.map((id: string) => new Types.ObjectId(id)),
     };
   }
-
+  console.log("full baseFilter:", JSON.stringify(baseFilter, null, 2));
   // ── প্রতিটা subject-এর জন্য আলাদা query ──
   // subject order ঠিক রাখতে subject-wise array তৈরি করো
   const questionsBySubject: {
@@ -81,7 +81,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
   for (let i = 0; i < subjectIds.length; i++) {
     const subjectId   = new Types.ObjectId(subjectIds[i]);
     const neededCount = counts[i];
-
+    console.log({subjectId})
     let qs = await Question.aggregate([
       {
         $match: {
@@ -107,7 +107,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
         { $project: { _id: 1, subject: 1, passage: 1, order: 1 } },
       ]);
     }
-
+    console.log({qs})
     // passage-এর questions serial wise sort করো
     // passage আছে → passage id দিয়ে group, order অনুযায়ী sort
     // passage নেই → আগে রাখো বা পরে — আপনার choice

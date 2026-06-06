@@ -24,7 +24,7 @@ const authMiddleware = (...requiredRoles: string[]) => {
 
       // checking if the user is exist
       const user = await User.findById(id).select('-password');
-
+      console.log({user})
       if (!user) {
         throw new UnauthorizedError('User not exists!');
       }

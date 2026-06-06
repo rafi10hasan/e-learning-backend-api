@@ -99,7 +99,7 @@ export const importTestCsvRowSchema = z.object({
     examType: z.enum([EXAM_TYPES.ENTRANCE_EXAM, EXAM_TYPES.MATURE, EXAM_TYPES.SEMIMATURE], { message: "Invalid exam type" }),
     year: z.coerce.number({ message: "Year is required" }).int({ message: "Year must be an integer" }).min(2000, { message: "Year must be 2000 or later" }).max(new Date().getFullYear(), { message: "Year cannot be in the future" }),
     testType: z.literal(TEST_TYPES.OFFICIAL, { message: "Test type must be official" }),
-    access: z.literal(ACCESS_TYPES.PREMIUM, { message: "Access must be premium" }),
+    access: z.enum([ACCESS_TYPES.FREE, ACCESS_TYPES.PREMIUM], { message: "Invalid access type" }),
     questionText: z.string({ message: "Question text is required" }).min(1, { message: "Question text cannot be empty" }),
     questionImageUrl: z.string({ message: "Question image URL must be a string" }).optional(),
     options: z.array(csvQuestionOptionSchema, { message: "Options must be an array" }).min(2, { message: "At least 2 options are required" }).max(4, { message: "Maximum 4 options allowed" }),

@@ -69,13 +69,30 @@ const createAccount = async (payload: TRegistrationPayload) => {
 };
 
 
-const choosePlan = async (user: IUser, plan: string) =>{
-  user.plan = plan;
+const choosePlan = async (user: IUser, payload: { plan: string, faculty: string }) => {
+  user.plan = payload.plan;
+  if (payload.faculty) {
+    user.faculty = payload.faculty;
+  }
   await user.save();
   return null;
 };
 
+
+const getUserPlan = async (user: IUser) => {
+  let faculty = null;
+  if (user.plan === 'provime') {
+    faculty = user.faculty ? user.faculty : null;
+  }
+  return {
+    plan: user.plan ? user.plan : null,
+    faculty: faculty
+  };
+};
+
+
 export const userService = {
   createAccount,
-  choosePlan
+  choosePlan,
+  getUserPlan
 };
