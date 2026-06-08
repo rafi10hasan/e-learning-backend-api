@@ -3,6 +3,7 @@ import withTransaction from "../../../helpers/withTransaction";
 import { EXAM_TYPES, TAccessTypes, TEST_TYPES, TExamTypes, TTestTypes } from "../../../interfaces";
 import { BadRequestError, NotFoundError } from "../../errors/request/apiError";
 import Question from "../question/question.model";
+import Subject from "../subject/subject.model";
 import { ITest } from "./test.interface";
 import Test from "./test.model";
 import { buildQuestionContext, getPaginatedTestsByType, NormalizedImportRow, normalizeImportRow, readCsvRows } from "./test.utils";
@@ -34,7 +35,7 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
   // Validate every row with zod before touching the database.
   const parsedRows = rawRows.map((row, index) => {
     const normalizedRow = normalizeImportRow(row);
-    console.log({normalizedRow});
+    console.log({ normalizedRow });
     const validation = importTestCsvRowSchema.safeParse(normalizedRow);
 
     if (!validation.success) {
@@ -130,7 +131,7 @@ const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
 
   const resolvedContexts = await Promise.all(parsedRows.map((row) => buildQuestionContext(row)));
 
-  console.log({resolvedContexts});
+  console.log({ resolvedContexts });
 
   return withTransaction(async (session) => {
     const existingTest = await Test.findOne({ testCode }).session(session);
@@ -309,63 +310,72 @@ const getAllAdditionalTests = async (input: {
 // get Question by test id with pagination and optional department filter
 const getQuestionsByTestId = async (
   testId: string,
-  input: { page?: number; limit?: number }
+  input: { page?: number; limit?: number; searchTerm?: string }
 ) => {
-  const page = Number(input.page) || 1;
+  const page = input.searchTerm ? 1 : Number(input.page) || 1;
   const limit = Number(input.limit) || 20;
   const skip = (page - 1) * limit;
+  const searchTerm = input.searchTerm?.trim();
 
-  // 1. Test find kora
-  const test = await Test.findById(testId).select("title").lean();
-  if (!test) {
-    throw new NotFoundError("Test not found");
-  }
+  const test = await Test.findById(testId).select("title examType").lean();
+  if (!test) throw new NotFoundError("Test not found");
 
-  // Aggregation-er jonno ObjectId casting
   const targetTestId = new mongoose.Types.ObjectId(testId);
 
-  // 2. Base Match Query Setup
   const matchQuery: any = {
     testIds: { $in: [targetTestId] },
     isActive: true,
-    status: "published"
+    status: "published",
   };
 
+  if (searchTerm) {
+    const searchRegex = new RegExp(searchTerm, "i");
+    const subject = await Subject.findOne({
+      examType: test.examType,
+      name: { $regex: searchRegex },
+    }).select("_id").lean();
 
-  // 4. Aggregation Pipeline
+    if (subject) {
+      matchQuery.subject = subject._id;
+    } else {
+      return {
+        testTitle: test.title,
+        data: [],
+        meta: { total: 0, page, limit, totalPages: 0 },
+      };
+    }
+  }
+
   const aggregatePipeline: any[] = [
-    // Stage 1: Filter Questions
     { $match: matchQuery },
 
-    // Stage 2: CRITICAL SORTING (Jeno same passage-er shob prosno por por thake)
-    { 
-      $sort: { 
+    // passage group একসাথে, subject অনুযায়ী sort
+    {
+      $sort: {
         subject: 1,
-        passage: 1, // Same passage group ekshathe thakbe
-        year: -1, 
-        _id: 1 
-      } 
+        passage: 1,
+        year: -1,
+        _id: 1,
+      },
     },
 
-    // Stage 3: Populate Passage Collection
+    // passage populate
     {
       $lookup: {
-        from: "passages", // Database collection name string check kore niben
+        from: "passages",
         localField: "passage",
         foreignField: "_id",
-        as: "passageDetails"
-      }
+        as: "passageDetails",
+      },
     },
-
-    // Stage 4: Unwind object conversion
     {
       $unwind: {
         path: "$passageDetails",
-        preserveNullAndEmptyArrays: true
-      }
+        preserveNullAndEmptyArrays: true,
+      },
     },
 
-    // Stage 5: Facet Pagination & Field Projecting
+    // total count + paginated data
     {
       $facet: {
         metadata: [{ $count: "total" }],
@@ -382,7 +392,6 @@ const getQuestionsByTestId = async (
               year: 1,
               correctOptionIndex: 1,
               explanation: 1,
-              // Initial Passage details map (Id ti loop processing er jonno strict lagbe)
               passageRaw: {
                 $cond: {
                   if: { $gt: [{ $ifNull: ["$passageDetails", 0] }, 0] },
@@ -392,44 +401,75 @@ const getQuestionsByTestId = async (
                     title: "$passageDetails.title",
                     content: "$passageDetails.content",
                     passageImageUrl: "$passageDetails.passageImageUrl",
-                    questionRange: "$passageDetails.questionRange"
                   },
-                  else: null
-                }
-              }
-            }
-          }
-        ]
-      }
-    }
+                  else: null,
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
   ];
 
-  // Aggregation execute kora
   const aggregationResult = await Question.aggregate(aggregatePipeline);
-
   const rawQuestions = aggregationResult[0]?.data || [];
   const total = aggregationResult[0]?.metadata[0]?.total || 0;
 
-  // 5. TRICK LAYER: Backend control for single passage rendering
+  // ── Dynamic questionRange ──
+  // pagination skip করার আগের সব questions-এ passage position জানতে হবে
+  // তাই আলাদা query দিয়ে পুরো test-এর passage positions বের করো
+  const allPassagePositions = await Question.aggregate([
+    { $match: matchQuery },
+    { $sort: { subject: 1, passage: 1, year: -1, _id: 1 } },
+    { $project: { _id: 1, passage: 1 } },
+  ]);
+
+  // passage → { start, end } map তৈরি করো (1-based)
+  const passageRangeMap = new Map<string, { start: number; end: number }>();
+  allPassagePositions.forEach((q: any, idx: number) => {
+    if (q.passage) {
+      const key = q.passage.toString();
+      const position = idx + 1; // 1-based
+      if (!passageRangeMap.has(key)) {
+        passageRangeMap.set(key, { start: position, end: position });
+      } else {
+        passageRangeMap.get(key)!.end = position;
+      }
+    }
+  });
+
+  // ── Passage rendering ──
+  // প্রথমবার passage → full data, পরে → শুধু questionRange
   let lastProcessedPassageId: string | null = null;
 
   const finalQuestions = rawQuestions.map((q: any) => {
     const { passageRaw, ...restQuestionData } = q;
-    
-    // Jodi prosne passage thake
+
     if (passageRaw && passageRaw._id) {
       const currentPassageId = passageRaw._id.toString();
+      const range = passageRangeMap.get(currentPassageId);
+      const questionRange = {
+        from: range ? range.start : null,
+        to: range ? range.end : null,
+      };
 
-      // Jodi eiti ekta NOTUN passage hoy (ja ager prosne chilo na)
       if (currentPassageId !== lastProcessedPassageId) {
-        lastProcessedPassageId = currentPassageId; // Track ID updated
-
+        // নতুন passage — full data
+        lastProcessedPassageId = currentPassageId;
         return {
           ...restQuestionData,
-          passage: passageRaw // Full passage details prothom prosne jabe
+          passage: {
+            _id: passageRaw._id,
+            passageCode: passageRaw.passageCode,
+            title: passageRaw.title,
+            content: passageRaw.content,
+            passageImageUrl: passageRaw.passageImageUrl,
+            questionRange,
+          },
         };
       } else {
-        // Same passage repeat hole object structure intact thakbe kintu data content/image completely hidden (null) thakbe
+        // same passage — শুধু questionRange
         return {
           ...restQuestionData,
           passage: {
@@ -438,17 +478,13 @@ const getQuestionsByTestId = async (
             title: null,
             content: null,
             passageImageUrl: null,
-            questionRange: passageRaw.questionRange
-          }
+            questionRange,
+          },
         };
       }
     }
 
-    // Passage na thakle direct null
-    return {
-      ...restQuestionData,
-      passage: null
-    };
+    return { ...restQuestionData, passage: null };
   });
 
   return {

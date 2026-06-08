@@ -9,9 +9,10 @@ export function shuffle<T>(arr: T[]): T[] {
   }
   return a;
 }
- 
+
 export function getRemaining(session: Pick<IQuizSession, "startedAt" | "durationSeconds">): number {
   const expireAt = session.startedAt.getTime() + session.durationSeconds * 1000;
+  console.log({ expireAt })
   return Math.max(0, (expireAt - Date.now()) / 1000);
 }
 
@@ -20,11 +21,11 @@ export function calcElapsed(lastActiveAt: Date, remaining: number): number {
   const raw = (Date.now() - lastActiveAt.getTime()) / 1000;
   return Math.min(raw, remaining);
 }
- 
+
 // 50 questions, 3 subjects → [17, 17, 16]
 
 export function splitCountBySubject(total: number, subjectCount: number): number[] {
-  const base      = Math.floor(total / subjectCount);
+  const base = Math.floor(total / subjectCount);
   const remainder = total % subjectCount;
   return Array.from({ length: subjectCount }, (_, i) =>
     i < remainder ? base + 1 : base
@@ -34,7 +35,7 @@ export function splitCountBySubject(total: number, subjectCount: number): number
 export function sortWithPassage(
   questions: { _id: Types.ObjectId; subject: Types.ObjectId; passage?: Types.ObjectId; order?: number }[]
 ) {
-  const withPassage    = questions.filter((q) => q.passage);
+  const withPassage = questions.filter((q) => q.passage);
   const withoutPassage = questions.filter((q) => !q.passage);
 
   const passageMap = new Map<string, typeof withPassage>();

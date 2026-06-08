@@ -1,11 +1,11 @@
 import z from "zod";
 import { ACCESS_TYPES, EXAM_TYPES, TEST_TYPES } from "../../../interfaces";
-import { QUERSTION_DIFFICULTY, QUERSTION_STATUS, SOURCE_TYPES } from "../question/question.constant";
+import { QUERSTION_DIFFICULTY, QUERSTION_STATUS } from "../question/question.constant";
 
 
 const createTestSchema = z.object({
     title: z.string({ message: "Title is required" }).min(1, { message: "Title cannot be empty" }),
-    examType: z.enum([EXAM_TYPES.ENTRANCE_EXAM, EXAM_TYPES.MATURE, EXAM_TYPES.SEMIMATURE], { message: "Invalid exam type" }),
+    examType: z.enum([EXAM_TYPES.ENTRANCE_EXAM, EXAM_TYPES.MATURA, EXAM_TYPES.SEMI_MATURA], { message: "Invalid exam type" }),
     year: z
         .number({ message: "Year is required" })
         .int({ message: "Year must be an integer" })
@@ -20,7 +20,7 @@ const createTestSchema = z.object({
     subjectss: z.array(z.string({ message: "Subject ID must be a string" })).optional(),
 }).superRefine((data, ctx) => {
 
-    if (data.examType === EXAM_TYPES.SEMIMATURE || data.examType === EXAM_TYPES.MATURE) {
+    if (data.examType === EXAM_TYPES.SEMI_MATURA || data.examType === EXAM_TYPES.MATURA) {
         if (!data.subjectss || data.subjectss.length === 0) {
             ctx.addIssue({
                 code: 'custom',
@@ -96,7 +96,7 @@ const csvQuestionOptionSchema = z.object({
 export const importTestCsvRowSchema = z.object({
     testCode: z.string({ message: "testCode must be a string" }).optional(),
     testName: z.string({ message: "testName is required" }).optional(),
-    examType: z.enum([EXAM_TYPES.ENTRANCE_EXAM, EXAM_TYPES.MATURE, EXAM_TYPES.SEMIMATURE], { message: "Invalid exam type" }),
+    examType: z.enum([EXAM_TYPES.ENTRANCE_EXAM, EXAM_TYPES.MATURA, EXAM_TYPES.SEMI_MATURA], { message: "Invalid exam type" }),
     year: z.coerce.number({ message: "Year is required" }).int({ message: "Year must be an integer" }).min(2000, { message: "Year must be 2000 or later" }).max(new Date().getFullYear(), { message: "Year cannot be in the future" }),
     testType: z.literal(TEST_TYPES.OFFICIAL, { message: "Test type must be official" }),
     access: z.enum([ACCESS_TYPES.FREE, ACCESS_TYPES.PREMIUM], { message: "Invalid access type" }),
@@ -127,7 +127,7 @@ export const importTestCsvRowSchema = z.object({
         }
     }
 
-    if (data.examType === EXAM_TYPES.MATURE || data.examType === EXAM_TYPES.SEMIMATURE) {
+    if (data.examType === EXAM_TYPES.MATURA || data.examType === EXAM_TYPES.SEMI_MATURA) {
         if (!data.subject) {
             ctx.addIssue({ code: "custom", path: ["subject"], message: "Subject is required when exam type is semi_matura or matura" });
         }

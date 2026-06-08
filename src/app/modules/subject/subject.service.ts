@@ -1,10 +1,13 @@
 import slugify from "slugify";
 
+import { TExamTypes } from "../../../interfaces";
+import { EXAM_TYPES } from "../../../interfaces/index";
 import { BadRequestError } from "../../errors/request/apiError";
+import Department from "../department/department.model";
+import Faculty from "../faculty/faculty.model";
 import { ISubject } from "./subject.interface";
 import Subject from "./subject.model";
 import { TGetSubjectQueryPayload } from "./subject.zod";
-
 
 const createSubject = async (payload: ISubject) => {
     const isExist = await Subject.findOne({
@@ -52,7 +55,33 @@ const getAllSubjects = async (query: TGetSubjectQueryPayload) => {
     return formattedResult;
 };
 
+const getSubjectsByExamType = async (plan: TExamTypes, facultyName: string) => {
+
+    if (plan === EXAM_TYPES.MATURA || plan === EXAM_TYPES.SEMI_MATURA) {
+        const subjects = await Subject.find({ examType: plan, isActive: true });
+        return subjects.map(subject => ({
+            subjectId: subject._id,
+            name: subject.name,
+            slug: subject.slug,
+        }));
+    }
+    else if (plan === EXAM_TYPES.ENTRANCE_EXAM) {
+        const faculty = await Faculty.findOne({ name: facultyName, examType: plan, isActive: true });
+        const departments = await Department.find({ facultyId: faculty?._id, examType: plan, isActive: true });
+        return departments.map(department => ({
+            departmentId: department._id,
+            name: department.name,
+            slug: department.slug,
+        }));
+    }
+
+}
+
+
+
+
 export const subjectService = {
     createSubject,
     getAllSubjects,
+    getSubjectsByExamType
 };

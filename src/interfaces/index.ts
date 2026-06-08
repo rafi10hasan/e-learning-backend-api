@@ -1,7 +1,7 @@
 
 export const EXAM_TYPES = {
-    SEMIMATURE: 'semi_matura',
-    MATURE: 'matura',
+    SEMI_MATURA: 'semi_matura',
+    MATURA: 'matura',
     ENTRANCE_EXAM: 'provime'
 } as const;
 

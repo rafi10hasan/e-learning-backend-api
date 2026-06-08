@@ -38,9 +38,9 @@ const importTestsFromCsvIntoDb = asyncHandler(async (req: Request, res: Response
 
 
 const getAllOfficialTestsIntoDb = asyncHandler(async (req: Request, res: Response) => {
- 
+
   const { departments, page, limit } = req.query;
-  console.log(req.user)
+
   const result = await testService.getAllOfficialTests(
     {
       examType: req.user.plan as string,

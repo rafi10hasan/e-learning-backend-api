@@ -26,7 +26,7 @@ export interface IQuizSession extends Document {
   correctCount: number;   // default: 0
   incorrectCount: number;   // default: 0
 
-  durationSeconds: number
+  durationSeconds: number;
 
   currentIndex: number;
   status: TQuizStatus;

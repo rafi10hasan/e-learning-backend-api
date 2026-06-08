@@ -29,4 +29,11 @@ subjectRouter.get(
   }),
   subjectController.getAllSubjects,
 );
+
+subjectRouter.get(
+  '/by-exam-type',
+  authMiddleware(USER_ROLE.STUDENT),
+  subjectController.getSubjectsByType,
+);
+
 export default subjectRouter;

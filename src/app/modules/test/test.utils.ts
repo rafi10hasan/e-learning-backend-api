@@ -92,6 +92,7 @@ export const resolveDocumentId = async (
 ) => {
     // Resolve a human-readable code or name to a MongoDB ObjectId.
     const value = rawValue.trim();
+    console.log({ value })
     const orConditions: Array<Record<string, unknown>> = [
         { name: { $regex: new RegExp(`^${escapeRegExp(value)}$`, "i") } },
         { slug: { $regex: new RegExp(`^${escapeRegExp(value)}$`, "i") } },
@@ -171,7 +172,7 @@ export const buildQuestionContext = async (row: NormalizedImportRow) => {
             throw new BadRequestError(`Subject not found: ${row.subject ?? "empty"}`);
         }
         const passageId = row.passage ? await resolveDocumentId(Passage, row.passage, { faculty: facultyId }) : null;
-
+        console.log({ passageId })
         return {
             faculty: facultyId,
             subject: subjectId,
@@ -185,8 +186,8 @@ export const buildQuestionContext = async (row: NormalizedImportRow) => {
         throw new BadRequestError(`Subject not found: ${row.subject ?? "empty"}`);
     }
 
-    const passageId = row.passage ? await resolveDocumentId(Passage, row.passage, { examType: row.examType }) : null;
-
+    const passageId = row.passage ? await resolveDocumentId(Passage, row.passage) : null;
+    console.log({ passageId })
     return {
         subject: subjectId,
         passage: passageId ?? undefined,
@@ -300,16 +301,29 @@ export const getPaginatedTestsByType = async (
             .lean(),
         Test.countDocuments(query),
     ]);
-   
-    const formattedTests = tests.map((test) => ({
-        testId: test._id,
-        title: test.title,
-        totalQuestions: test.totalQuestions,
-        totalSubjects: test.subjects?.length || 0,
-        access: test.access,
-        isLock: test.access === "premium" ? true : false,
-        year: test.year,
-    }));
+
+    const subjectsList = await Subject.find({ _id: { $in: tests.flatMap(test => test.subjects || []) }, examType: input.examType })
+        .select("_id name")
+        .lean();
+
+    console.log({ subjectsList })
+
+    const formattedTests = tests.map((test) => {
+
+        const testSubjectIds = test.subjects?.map(id => id.toString()) || [];
+
+        return {
+            testId: test._id,
+            title: test.title,
+            totalQuestions: test.totalQuestions,
+
+            subjects: subjectsList.filter(subject => testSubjectIds.includes(subject._id.toString())),
+            totalSubjects: test.subjects?.length || 0,
+            access: test.access,
+            isLock: test.access === "premium",
+            year: test.year,
+        };
+    });
 
     return {
         data: formattedTests,

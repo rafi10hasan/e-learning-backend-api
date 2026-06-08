@@ -1,13 +1,13 @@
+import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import asyncHandler from "../../../shared/asynchandler";
 import sendResponse from "../../../shared/sendResponse";
-import { Request, Response } from "express";
-import { quizSessionService } from "./quiz.session.service";
 import { BadRequestError } from "../../errors/request/apiError";
+import { quizSessionService } from "./quiz.session.service";
 
 
 const startQuiz = asyncHandler(async (req: Request, res: Response) => {
-  const result = await quizSessionService.startQuiz(req.user,req.body);
+  const result = await quizSessionService.startQuiz(req.user, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,
@@ -18,7 +18,7 @@ const startQuiz = asyncHandler(async (req: Request, res: Response) => {
 
 
 const completeQuiz = asyncHandler(async (req: Request, res: Response) => {
-  const {sessionId} = req.params;
+  const { sessionId } = req.params;
   const result = await quizSessionService.completeQuiz(sessionId, req.user._id);
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
@@ -30,9 +30,9 @@ const completeQuiz = asyncHandler(async (req: Request, res: Response) => {
 
 
 const getReviewQuiz = asyncHandler(async (req: Request, res: Response) => {
-  const {sessionId} = req.params;
-  const {index} = req.body;
-  if(!index){
+  const { sessionId } = req.params;
+  const { index } = req.body;
+  if (!index) {
     throw new BadRequestError("Question index is required.");
   }
   const result = await quizSessionService.getQuestionReview(sessionId, req.user._id, Number(index));
@@ -45,7 +45,7 @@ const getReviewQuiz = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const getSessionStatus = asyncHandler(async (req: Request, res: Response) => {
-  const {sessionId} = req.params;
+  const { sessionId } = req.params;
   const result = await quizSessionService.getSessionStatus(sessionId, req.user._id);
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
@@ -55,9 +55,22 @@ const getSessionStatus = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
+
+const getQuizMapIntodb = asyncHandler(async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const result = await quizSessionService.getQuizMap(sessionId, req.user._id);
+  sendResponse(res, {
+    statusCode: StatusCodes.CREATED,
+    success: true,
+    message: "Quiz map retrieved successfully.",
+    data: result,
+  });
+});
+
 export const quizSessionController = {
   startQuiz,
   completeQuiz,
   getReviewQuiz,
   getSessionStatus,
+  getQuizMapIntodb
 }

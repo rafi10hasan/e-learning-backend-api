@@ -9,7 +9,7 @@ const subjectSchema = new Schema<ISubject>(
         slug: { type: String, required: true },
         examType: {
             type: String,
-            enum: [EXAM_TYPES.SEMIMATURE,EXAM_TYPES.MATURE],
+            enum: Object.values(EXAM_TYPES),
             required: true,
         },
         isElective: { type: Boolean, default: false },

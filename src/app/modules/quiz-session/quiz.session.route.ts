@@ -1,9 +1,9 @@
 import { Router } from "express";
 import authMiddleware from "../../middlewares/auth.middleware";
 import { validateRequest } from "../../middlewares/request.validator";
+import { USER_ROLE } from "../user/user.constant";
 import { quizSessionController } from "./quiz.session.controller";
 import quizSessionValidationZodSchema from "./quiz.session.zod";
-import { USER_ROLE } from "../user/user.constant";
 
 
 const quizRouter = Router();
@@ -25,7 +25,7 @@ quizRouter.post(
 
 
 quizRouter.get(
-  '/review',
+  '/review/:sessionId',
   authMiddleware(USER_ROLE.STUDENT),
   quizSessionController.getReviewQuiz,
 );
@@ -34,6 +34,13 @@ quizRouter.patch(
   '/session-status',
   authMiddleware(USER_ROLE.STUDENT),
   quizSessionController.getSessionStatus,
+);
+
+
+quizRouter.get(
+  '/map/:sessionId',
+  authMiddleware(USER_ROLE.STUDENT),
+  quizSessionController.getQuizMapIntodb,
 );
 
 export default quizRouter;

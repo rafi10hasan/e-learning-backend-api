@@ -19,7 +19,7 @@ const createQuestion = async (
     files?: QuestionFiles
 ): Promise<IQuestion> => {
 
-    if (payload.examType && (payload.examType === EXAM_TYPES.MATURE || payload.examType === EXAM_TYPES.SEMIMATURE)) {
+    if (payload.examType && (payload.examType === EXAM_TYPES.MATURA || payload.examType === EXAM_TYPES.SEMI_MATURA)) {
 
         const isExistSubject = await Subject.findOne({ _id: payload.subject, examType: payload.examType }).select("_id");
 

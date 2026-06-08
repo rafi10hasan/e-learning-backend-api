@@ -72,7 +72,12 @@ const QuizSessionSchema = new Schema<IQuizSession>(
     },
 
     markedQuestionIds: { type: [Schema.Types.ObjectId], ref: 'Question', default: [] },
-    
+
+    durationSeconds: {
+      type: Number,
+      required: true,
+    },
+
     correctCount: {
       type: Number,
       default: 0,
