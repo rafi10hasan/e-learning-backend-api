@@ -12,6 +12,7 @@ const departmentSchema = new Schema<IDepartment>(
             type: String,
             default: EXAM_TYPES.ENTRANCE_EXAM
         },
+        subjects: [{ type: Schema.Types.ObjectId, ref: "Subject", default: [] }],
         slug: { type: String, required: true },
         isActive: { type: Boolean, default: true },
     },

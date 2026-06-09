@@ -36,4 +36,14 @@ subjectRouter.get(
   subjectController.getSubjectsByType,
 );
 
+
+subjectRouter.post(
+  '/by-departments',
+  authMiddleware(USER_ROLE.STUDENT),
+  validateRequest({
+    body: subjectValidationZodSchema.getSubjectsByDepartmentsSchema
+  }),
+  subjectController.getSubjectsByDepartments,
+);
+
 export default subjectRouter;

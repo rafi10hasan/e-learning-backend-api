@@ -5,7 +5,6 @@ import getQuestion from './quiz/getQuestion';
 import joinQuiz from './quiz/joinQuiz';
 import leaveReviewPage from './quiz/leaveReviewPage';
 import navigateQuestion from './quiz/navigateQuestion';
-import getQuizMap from './quiz/quizMap';
 import submitAnswer from './quiz/submitAnswer';
 import toggleMarkQuestion from './quiz/toggleMarkQuestion';
 import { SOCKET_EVENTS } from './socket.constant';
@@ -153,19 +152,6 @@ export const handleQuizEvents = (
 
   // ── get_quiz_map ──────────────────────────
   // Navigate modal খুললে — সব question-এর status
-  socket.on(
-    SOCKET_EVENTS.GET_QUIZ_MAP,
-    async ({ sessionId }: { sessionId: string }) => {
-      try {
-        const map = await getQuizMap(sessionId, new Types.ObjectId(userId));
-        socket.emit(SOCKET_EVENTS.QUIZ_MAP, map);
-      } catch (err: unknown) {
-        socket.emit(SOCKET_EVENTS.ERROR, {
-          message: err instanceof Error ? err.message : "Unknown error",
-        });
-      }
-    }
-  );
 
   socket.on(
     SOCKET_EVENTS.EXPIRE_QUIZ,

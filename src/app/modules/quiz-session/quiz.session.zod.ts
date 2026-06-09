@@ -11,7 +11,7 @@ import { QUERSTION_DIFFICULTY } from "../question/question.constant";
 
 export const quizSessionSchema = z.object({
     
-    year: z.coerce.number({ message: "Year is required" }).int({ message: "Year must be an integer" }).min(2000, { message: "Year must be 2000 or later" }).max(new Date().getFullYear(), { message: "Year cannot be in the future" }),
+    year: z.coerce.number({ message: "Year is required" }).int({ message: "Year must be an integer" }).min(2000, { message: "Year must be 2000 or later" }).max(new Date().getFullYear(), { message: "Year cannot be in the future" }).optional(),
   
     difficultyLevel: z.enum([QUERSTION_DIFFICULTY.EASY, QUERSTION_DIFFICULTY.MEDIUM, QUERSTION_DIFFICULTY.HARD], { message: "Invalid difficulty level" }).default(QUERSTION_DIFFICULTY.EASY),
     subjectIds: z.array(z.string({ message: "Subject ID must be a string" })),

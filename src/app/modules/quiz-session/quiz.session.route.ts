@@ -18,7 +18,7 @@ quizRouter.post(
 );
 
 quizRouter.post(
-  '/complete',
+  '/complete/:sessionId',
   authMiddleware(USER_ROLE.STUDENT),
   quizSessionController.completeQuiz,
 );

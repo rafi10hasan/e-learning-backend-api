@@ -5,7 +5,7 @@ import dashboardQuestionRouter from "./question/question.route";
 const adminRouter = Router();
 
 
-adminRouter.use('/questions', dashboardQuestionRouter);
+adminRouter.use('/dashboard', dashboardQuestionRouter);
 
 
 export default adminRouter;

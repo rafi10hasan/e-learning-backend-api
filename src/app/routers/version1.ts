@@ -1,14 +1,15 @@
 import express from 'express';
 import authRouter from '../modules/auth/auth.route';
 import { contentRouter } from '../modules/content/content.route';
+import adminRouter from '../modules/dashboard';
 import departmentRouter from '../modules/department/department.route';
 import facultyRouter from '../modules/faculty/faculty.route';
+import passageRouter from '../modules/passage/passage.route';
 import questionRouter from '../modules/question/question.route';
+import quizRouter from '../modules/quiz-session/quiz.session.route';
 import subjectRouter from '../modules/subject/subject.route';
 import testRouter from '../modules/test/test.route';
 import userRouter from '../modules/user/user.route';
-import quizRouter from '../modules/quiz-session/quiz.session.route';
-import passageRouter from '../modules/passage/passage.route';
 
 
 const routersVersionOne = express.Router();
@@ -17,6 +18,10 @@ const appRouters = [
   {
     path: '/user',
     router: userRouter,
+  },
+  {
+    path: '/admin',
+    router: adminRouter,
   },
   {
     path: '/auth',

@@ -16,6 +16,12 @@ const getSubjectQuerySchema = z.object({
   }),
 });
 
+const getSubjectsByDepartmentsSchema = z.object({
+   departments : z.array(z.string().min(1, {
+    message: "Department ID cannot be empty",
+  }))
+});
+
 export type TCreateSubjectPayload = z.infer<
   typeof createSubjectSchema
 >;
@@ -24,9 +30,11 @@ export type TGetSubjectQueryPayload = z.infer<
   typeof getSubjectQuerySchema
 >;
 
+
 const subjectValidationZodSchema = {
   createSubjectSchema,
   getSubjectQuerySchema,
+  getSubjectsByDepartmentsSchema
 };
 
 export default subjectValidationZodSchema;
