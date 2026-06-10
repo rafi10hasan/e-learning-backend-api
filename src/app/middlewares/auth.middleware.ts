@@ -11,7 +11,7 @@ const authMiddleware = (...requiredRoles: string[]) => {
     try {
 
       const token = req.headers.authorization?.replace('Bearer ', '') || '';
-
+      console.log({ token })
       // checking if the token is missing
       if (!token) {
         throw new UnauthorizedError('Unauthorized Access');
@@ -24,12 +24,12 @@ const authMiddleware = (...requiredRoles: string[]) => {
 
       // checking if the user is exist
       const user = await User.findById(id).select('-password');
-      console.log({user})
+
       if (!user) {
         throw new UnauthorizedError('User not exists!');
       }
 
-     
+
 
       if (user.deletedAt) {
         throw new UnauthorizedError('Unauthorized Access');
@@ -46,7 +46,7 @@ const authMiddleware = (...requiredRoles: string[]) => {
       if (user.status === 'BLOCKED') {
         throw new UnauthorizedError('This account is blocked. Contact support.');
       }
-      
+
 
       if (requiredRoles.length && !requiredRoles.includes(user.role)) {
         throw new ForbiddenError('You have no access to this route, Forbidden!');

@@ -18,6 +18,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
     departmentIds, difficultyLevel, questionCount, year,
   } = payload;
 
+  // একটাই in_progress session থাকতে পারবে
   const existing = await QuizSession.findOne({
     user: user._id,
     status: QUIZ_STATUS.IN_PROGRESS,
@@ -37,7 +38,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
   });
   const isPremium = !!subscription;
 
-  // ── Seen questions ──
+  // ── Seen questions — completed + expired থেকে ──
   const seenAgg = await QuizSession.aggregate([
     {
       $match: {
@@ -51,17 +52,18 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
   ]);
   const seenIds: Types.ObjectId[] = seenAgg[0]?.ids ?? [];
 
+  // ── Subject-wise split: 50q, 3 subjects → [17, 17, 16] ──
   const counts = splitCountBySubject(questionCount, subjectIds.length);
 
-  // base filter
+  // base filter — সব subjects-এর জন্য shared
   const baseFilter: Record<string, unknown> = {
     examType: user.plan,
     status: "published",
     isActive: true,
-    // premium না থাকলে শুধু free questions
-    ...(!isPremium && { access: "free" }),
   };
 
+  // premium না থাকলে শুধু free questions
+  if (!isPremium) baseFilter.access = "free";
   if (year) baseFilter.year = Number(year);
   if (difficultyLevel) baseFilter.difficultyLevel = difficultyLevel;
   if (facultyId) baseFilter.faculty = new Types.ObjectId(facultyId);
@@ -70,18 +72,20 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
       $in: departmentIds.map((id: string) => new Types.ObjectId(id)),
     };
   }
-  console.log("full baseFilter:", JSON.stringify(baseFilter, null, 2));
+
   // ── প্রতিটা subject-এর জন্য আলাদা query ──
-  // subject order ঠিক রাখতে subject-wise array তৈরি করো
-  const questionsBySubject: {
-    subjectId: Types.ObjectId;
-    questions: { _id: Types.ObjectId; subject: Types.ObjectId; passage?: Types.ObjectId; order?: number }[];
+  const allQuestions: {
+    _id: Types.ObjectId;
+    subject: Types.ObjectId;
+    passage?: Types.ObjectId;
+    order?: number;
   }[] = [];
 
   for (let i = 0; i < subjectIds.length; i++) {
     const subjectId = new Types.ObjectId(subjectIds[i]);
     const neededCount = counts[i];
-    console.log({ subjectId })
+
+    // প্রথমে seen বাদ দিয়ে চেষ্টা
     let qs = await Question.aggregate([
       {
         $match: {
@@ -94,7 +98,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
       { $project: { _id: 1, subject: 1, passage: 1, order: 1 } },
     ]);
 
-    // pool শেষ হলে seen reset
+    // pool শেষ হলে — seen reset, full pool থেকে নাও
     if (qs.length < neededCount) {
       qs = await Question.aggregate([
         {
@@ -107,18 +111,11 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
         { $project: { _id: 1, subject: 1, passage: 1, order: 1 } },
       ]);
     }
-    console.log({ qs })
-    // passage-এর questions serial wise sort করো
-    // passage আছে → passage id দিয়ে group, order অনুযায়ী sort
-    // passage নেই → আগে রাখো বা পরে — আপনার choice
+
+    // passage questions serial wise sort
     const sorted = sortWithPassage(qs);
-
-    questionsBySubject.push({ subjectId, questions: sorted });
+    allQuestions.push(...sorted);
   }
-
-  // ── সব subjects একসাথে জোড়া — subject order maintain ──
-  // shuffle করবো না — subject অনুযায়ী sorted থাকবে
-  const allQuestions = questionsBySubject.flatMap((s) => s.questions);
 
   if (allQuestions.length === 0) {
     throw new NotFoundError("No questions available for the selected filters.");
@@ -126,8 +123,33 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
 
   const questionIds = allQuestions.map((q) => q._id);
   const totalQuestions = questionIds.length;
-  const durationSeconds = totalQuestions * 60;
+  const durationSeconds = totalQuestions * 60; // 1 min per question
   const startedAt = new Date();
+
+  // ── questionSubjectMap ──
+  // completeQuiz-এ subject-wise grid-এর জন্য
+  // unanswered questions-এরও subject জানা যাবে
+  const questionSubjectMap = allQuestions.map((q) => ({
+    questionId: q._id,
+    subjectId: q.subject,
+  }));
+
+  // ── passageQuestionMap ──
+  // getQuestion-এ dynamic questionRange calculate করতে লাগবে
+  const passageGroupMap = new Map<string, Types.ObjectId[]>();
+  for (const q of allQuestions) {
+    if (q.passage) {
+      const key = q.passage.toString();
+      if (!passageGroupMap.has(key)) passageGroupMap.set(key, []);
+      passageGroupMap.get(key)!.push(q._id);
+    }
+  }
+  const passageQuestionMap = [...passageGroupMap.entries()].map(
+    ([passageId, qIds]) => ({
+      passageId: new Types.ObjectId(passageId),
+      questionIds: qIds,
+    })
+  );
 
   const session = await QuizSession.create({
     user: user._id,
@@ -136,13 +158,16 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
     ...(facultyId && { faculty: new Types.ObjectId(facultyId) }),
     ...(departmentIds?.length && { departmentIds: departmentIds.map((id: string) => new Types.ObjectId(id)) }),
     ...(difficultyLevel && { difficultyLevel }),
-    ...(year && { year }),
+    ...(year && { year: Number(year) }),
     questionIds,
     totalQuestions,
     durationSeconds,
     correctCount: 0,
     incorrectCount: 0,
     currentIndex: 0,
+    markedQuestionIds: [],
+    questionSubjectMap,
+    passageQuestionMap,
     status: QUIZ_STATUS.IN_PROGRESS,
     startedAt,
   });
@@ -164,7 +189,7 @@ const completeQuiz = async (sessionId: string, userId: Types.ObjectId) => {
   const session = await QuizSession.findOne({
     _id: new Types.ObjectId(sessionId),
     user: userId,
-  });
+  }).populate("questionSubjectMap.subjectId", "name");
 
   if (!session) throw new NotFoundError("Session not found.");
   if (session.status === "completed") throw new BadRequestError("Quiz already completed.");
@@ -182,32 +207,64 @@ const completeQuiz = async (sessionId: string, userId: Types.ObjectId) => {
     (session.correctCount / session.totalQuestions) * 100
   );
 
-  // subject-wise breakdown
-  const subjectMap = new Map<string, { correct: number; total: number }>();
-  for (const attempt of session.attempts) {
-    const key = attempt.subjectId.toString();
-    if (!subjectMap.has(key)) subjectMap.set(key, { correct: 0, total: 0 });
-    const s = subjectMap.get(key)!;
-    s.total += 1;
-    s.correct += attempt.isCorrect ? 1 : 0;
-  }
-
-  // attemptMap — O(1) lookup
+  // ── attempt map — O(1) lookup ──
   const attemptMap = new Map(
     session.attempts.map((a) => [a.questionId.toString(), a])
   );
 
-  // question grid — correct/incorrect/unanswered
+  // ── questionId → subjectId lookup ──
+  const questionSubjectLookup = new Map(
+    session.questionSubjectMap.map((q) => [
+      q.questionId.toString(),
+      q.subjectId,
+    ])
+  );
+
+  // ── subject-wise breakdown — "Results by subject" ──
+  // subjectId → { name, correct, total }
+  const subjectResultMap = new Map<
+    string,
+    { subjectId: Types.ObjectId; name: string; correct: number; total: number }
+  >();
+
+  for (const q of session.questionSubjectMap) {
+    const subjectDoc = q.subjectId as any;
+    const key = (subjectDoc._id ?? subjectDoc).toString();
+    const subjectName = subjectDoc.name ?? "";
+
+    if (!subjectResultMap.has(key)) {
+      subjectResultMap.set(key, {
+        subjectId: subjectDoc._id ?? subjectDoc,
+        name: subjectName,
+        correct: 0,
+        total: 0,
+      });
+    }
+
+    console.log({ subjectResultMap })
+
+    const attempt = attemptMap.get(q.questionId.toString());
+    const entry = subjectResultMap.get(key)!;
+    entry.total += 1;
+    if (attempt?.isCorrect) entry.correct += 1;
+  }
+
+  // ── questionResults — grid-এর জন্য ──
+  // correct/incorrect/unanswered + subjectId (frontend group করবে)
   const questionResults = session.questionIds.map((qId, index) => {
     const attempt = attemptMap.get(qId.toString());
+    const subjectId = questionSubjectLookup.get(qId.toString()) ?? null;
+
     return {
       index: index + 1,
+      questionId: qId,
+      subjectId,
       status: !attempt
         ? "unanswered"
         : attempt.isCorrect ? "correct" : "incorrect",
     };
   });
-
+  console.log({ questionResults })
   return {
     sessionId: session._id,
     totalQuestions: session.totalQuestions,
@@ -215,8 +272,8 @@ const completeQuiz = async (sessionId: string, userId: Types.ObjectId) => {
     incorrectCount: session.incorrectCount,
     skippedCount,
     scorePercent,
-    subjectResults: Object.fromEntries(subjectMap),
-    questionResults,  // grid-এর জন্য
+    subjectResults: [...subjectResultMap.values()],
+    questionResults,
   };
 };
 
@@ -227,10 +284,11 @@ const getQuestionReview = async (sessionId: string, userId: Types.ObjectId, inde
     user: userId,
   }).select("status questionIds attempts");
 
+  console.log({ index, sessionId })
   if (!session) throw new NotFoundError("Session not found.");
   if (session.status !== "completed") throw new BadRequestError("Quiz not completed.");
 
-  const questionId = session.questionIds[index];
+  const questionId = session.questionIds[index - 1];
   if (!questionId) throw new BadRequestError("Invalid index.");
 
   const question = await Question.findById(questionId)
@@ -241,6 +299,7 @@ const getQuestionReview = async (sessionId: string, userId: Types.ObjectId, inde
     (a) => a.questionId.toString() === questionId.toString()
   );
 
+  console.log({ question, attempt })
   return {
     index,
     questionText: question.questionText,

@@ -39,6 +39,10 @@ export const userSchema = new Schema<IUser>(
       enum: Object.values(USER_ROLE),
       default: USER_ROLE.STUDENT,
     },
+    city: {
+      type: String,
+      default: null
+    },
     provider: {
       type: String,
       enum: Object.values(PROVIDER),

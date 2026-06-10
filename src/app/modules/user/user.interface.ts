@@ -20,6 +20,7 @@ export interface IUser extends Document {
   fullName: string;
   avatar?: string;
   password: string;
+  city?: string;
   passwordChangedAt?: Date;
   verification: {
     emailVerifiedAt: Date | null;

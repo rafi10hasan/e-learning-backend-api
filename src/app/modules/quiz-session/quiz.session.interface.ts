@@ -22,6 +22,14 @@ export interface IQuizSession extends Document {
   questionIds: Types.ObjectId[];
   totalQuestions: number;
   attempts: IQuestionAttempt[];
+  questionSubjectMap: {
+    questionId: Types.ObjectId;
+    subjectId: Types.ObjectId;
+  }[];
+  passageQuestionMap: {
+    passageId: Types.ObjectId;
+    questionIds: Types.ObjectId[];
+  }[];
   markedQuestionIds: Types.ObjectId[];
   correctCount: number;   // default: 0
   incorrectCount: number;   // default: 0

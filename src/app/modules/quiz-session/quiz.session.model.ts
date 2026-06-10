@@ -71,6 +71,20 @@ const QuizSessionSchema = new Schema<IQuizSession>(
       default: [],
     },
 
+    questionSubjectMap: {
+      type: [{
+        questionId: { type: Schema.Types.ObjectId, ref: 'Question', required: true },
+        subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
+      }],
+      default: [],
+    },
+    passageQuestionMap: {
+      type: [{
+        passageId: { type: Schema.Types.ObjectId, ref: 'Passage', required: true },
+        questionIds: { type: [Schema.Types.ObjectId], ref: 'Question', default: [] },
+      }],
+      default: [],
+    },
     markedQuestionIds: { type: [Schema.Types.ObjectId], ref: 'Question', default: [] },
 
     durationSeconds: {

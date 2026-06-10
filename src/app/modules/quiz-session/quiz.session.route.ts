@@ -24,7 +24,7 @@ quizRouter.post(
 );
 
 
-quizRouter.get(
+quizRouter.post(
   '/review/:sessionId',
   authMiddleware(USER_ROLE.STUDENT),
   quizSessionController.getReviewQuiz,
