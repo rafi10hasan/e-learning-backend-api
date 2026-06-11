@@ -4,13 +4,13 @@ import { validateRequest } from '../../middlewares/request.validator';
 import { USER_ROLE } from '../user/user.constant';
 import { ContentController } from './content.controller';
 import { contentZodValidation } from './content.zod';
-import { ADMIN_ROLE } from '../admin/admin.constant';
+
 
 const router = Router();
 
 router.post(
   '/create-or-update',
-  authMiddleware(ADMIN_ROLE.ADMIN, ADMIN_ROLE.SUPER_ADMIN),
+  authMiddleware(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN, USER_ROLE.STUDENT),
   validateRequest({
     body: contentZodValidation.createOrUpdatePageSchema,
   }),
@@ -18,9 +18,9 @@ router.post(
 );
 
 // getAllContent
-router.get('/retrieve', ContentController.getAllContent);
+router.get('/retrieve', authMiddleware(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN), ContentController.getAllContent);
 
 // getContentByType
-router.get('/retrieve/:type', ContentController.getContentByType);
+router.get('/retrieve/:type', authMiddleware(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN,USER_ROLE.STUDENT), ContentController.getContentByType);
 
 export const contentRouter = router;

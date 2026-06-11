@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "src/server.js",
   "scripts": {
-    "start": "pm2 start ecosystem.config.json --no-daemon",
+    "start": "node dist/server.js",
     "dev": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "lint": "eslint src/**/*.ts",
@@ -21,7 +21,8 @@
     "compression": "^1.8.0",
     "cors": "^2.8.5",
     "cross-env": "^10.1.0",
-    "dotenv": "^17.4.2",
+    "csv-parser": "^3.2.1",
+    "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "express-rate-limit": "^8.4.0",
     "firebase-admin": "^13.4.0",

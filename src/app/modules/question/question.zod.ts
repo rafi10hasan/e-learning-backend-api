@@ -69,7 +69,7 @@ export const createQuestionSchema = z
       .max(new Date().getFullYear(), { message: "Year cannot be in the future" }),
     subject: z.string({ message: "Subject ID must be a string" }).optional(),
     faculty: z.string({ message: "Faculty ID must be a string" }).optional(),
-    departments: z.string({ message: "Department ID must be a string" }).optional(),
+    departments: z.array(z.string({ message: "Department ID must be a string" })).optional(),
     passage: z.string({ message: "Passage ID must be a string" }).optional(),
     source: z.enum(["archive", "practice", "both"], {
       message: "Source must be archive, practice or both",

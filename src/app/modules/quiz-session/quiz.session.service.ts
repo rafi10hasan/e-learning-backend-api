@@ -212,7 +212,7 @@ const completeQuiz = async (sessionId: string, userId: Types.ObjectId) => {
     session.attempts.map((a) => [a.questionId.toString(), a])
   );
 
-  // ── questionId → subjectId lookup ──
+  // ── questionId → subjectDoc lookup ──
   const questionSubjectLookup = new Map(
     session.questionSubjectMap.map((q) => [
       q.questionId.toString(),
@@ -221,11 +221,10 @@ const completeQuiz = async (sessionId: string, userId: Types.ObjectId) => {
   );
 
   // ── subject-wise breakdown — "Results by subject" ──
-  // subjectId → { name, correct, total }
-  const subjectResultMap = new Map<
-    string,
-    { subjectId: Types.ObjectId; name: string; correct: number; total: number }
-  >();
+  const subjectResultMap = new Map
+    <string,
+      { subjectId: Types.ObjectId; name: string; correct: number; total: number }
+    >();
 
   for (const q of session.questionSubjectMap) {
     const subjectDoc = q.subjectId as any;
@@ -241,30 +240,50 @@ const completeQuiz = async (sessionId: string, userId: Types.ObjectId) => {
       });
     }
 
-    console.log({ subjectResultMap })
-
     const attempt = attemptMap.get(q.questionId.toString());
     const entry = subjectResultMap.get(key)!;
     entry.total += 1;
     if (attempt?.isCorrect) entry.correct += 1;
   }
 
-  // ── questionResults — grid-এর জন্য ──
-  // correct/incorrect/unanswered + subjectId (frontend group করবে)
-  const questionResults = session.questionIds.map((qId, index) => {
-    const attempt = attemptMap.get(qId.toString());
-    const subjectId = questionSubjectLookup.get(qId.toString()) ?? null;
+  // ── subject-wise grouped questionGroups — grid-এর জন্য ──
+  // Physics: [1,2,3...], Chemistry: [11,12,13...]
+  const subjectQuestionMap = new Map
+    <string,
+      {
+        subjectId: Types.ObjectId;
+        name: string;
+        questions: {
+          index: number;
+          questionId: Types.ObjectId;
+          status: "correct" | "incorrect" | "unanswered";
+        }[];
+      }
+    >();
 
-    return {
+  session.questionIds.forEach((qId, index) => {
+    const attempt = attemptMap.get(qId.toString());
+    const subjectDoc = questionSubjectLookup.get(qId.toString()) as any;
+    const key = (subjectDoc?._id ?? subjectDoc)?.toString() ?? "unknown";
+    const name = subjectDoc?.name ?? "";
+
+    if (!subjectQuestionMap.has(key)) {
+      subjectQuestionMap.set(key, {
+        subjectId: subjectDoc?._id ?? subjectDoc,
+        name,
+        questions: [],
+      });
+    }
+
+    subjectQuestionMap.get(key)!.questions.push({
       index: index + 1,
       questionId: qId,
-      subjectId,
       status: !attempt
         ? "unanswered"
         : attempt.isCorrect ? "correct" : "incorrect",
-    };
+    });
   });
-  console.log({ questionResults })
+
   return {
     sessionId: session._id,
     totalQuestions: session.totalQuestions,
@@ -272,8 +291,10 @@ const completeQuiz = async (sessionId: string, userId: Types.ObjectId) => {
     incorrectCount: session.incorrectCount,
     skippedCount,
     scorePercent,
+    // subject-wise result — "Results by subject"
     subjectResults: [...subjectResultMap.values()],
-    questionResults,
+    // subject-wise grouped grid
+    questionGroups: [...subjectQuestionMap.values()],
   };
 };
 

@@ -8,7 +8,7 @@ import { departmentService } from "./department.service";
 
 const createDepartmentIntodb = asyncHandler(async (req: Request, res: Response) => {
     const { faculty } = req.params;
-    const result = await departmentService.createDepartmentUnderFaculty(req.body, faculty);
+    const result = await departmentService.createDepartmentUnderFaculty(req.body, faculty as string);
     sendResponse(res, {
         statusCode: StatusCodes.CREATED,
         success: true,
@@ -20,7 +20,7 @@ const createDepartmentIntodb = asyncHandler(async (req: Request, res: Response) 
 
 const getAllDepartments = asyncHandler(async (req: Request, res: Response) => {
     const { facultyId } = req.params;
-    const result = await departmentService.getAllDepartmentByfaculty(facultyId);
+    const result = await departmentService.getAllDepartmentByfaculty(facultyId as string);
 
     sendResponse(res, {
         statusCode: StatusCodes.OK,

@@ -10,6 +10,7 @@ import quizRouter from '../modules/quiz-session/quiz.session.route';
 import subjectRouter from '../modules/subject/subject.route';
 import testRouter from '../modules/test/test.route';
 import userRouter from '../modules/user/user.route';
+import homeDashboardRouter from '../modules/home/user.dashboard.route';
 
 
 const routersVersionOne = express.Router();
@@ -32,6 +33,13 @@ const appRouters = [
     path: '/content',
     router: contentRouter,
   },
+
+  
+  {
+    path: '/home/dashboard',
+    router: homeDashboardRouter,
+  },
+
   {
     path: '/subject',
     router: subjectRouter,

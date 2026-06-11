@@ -81,6 +81,31 @@ const createSocialAuthSchema = z.object({
 
 
 
+const updateUserProfileSchema = z.object({
+  fullName: z
+    .string({
+      error: (issue) => {
+        if (issue.input === undefined) return 'Full name is required';
+        if (typeof issue.input !== 'string') return 'Full name must be a string';
+        return 'Invalid full name format';
+      },
+    })
+    .min(3, 'Full name must be at least 3 characters long')
+    .max(30, 'Full name cannot exceed 30 characters')
+    .regex(/^[a-zA-Z\s]+$/, 'Full name can only contain letters and spaces').optional(),
+
+  city: z.string({
+    error: (issue) => {
+      if (issue.input === undefined) return 'City is required';
+      if (typeof issue.input !== 'string') return 'City must be a string';
+      return 'Invalid city format';
+    },
+  })
+    .regex(/^[a-zA-Z\s]+$/, "City can only contain letters and spaces").optional(),
+
+});
+
+
 const updateUserLocationSchema = z.object({
   address: z.string().max(100, 'Address cannot exceed 100 characters'),
   geo: z.object({
@@ -98,6 +123,9 @@ export type TUserLocationPayload = z.infer<
   typeof updateUserLocationSchema
 >;
 
+export type TUserProfileUpdatePayload = z.infer<
+  typeof updateUserProfileSchema
+>;
 
 export type TRegistrationPayload = z.infer<
   typeof createAuthSchema
@@ -105,6 +133,7 @@ export type TRegistrationPayload = z.infer<
 const userValidationZodSchema = {
   createAuthSchema,
   createSocialAuthSchema,
+  updateUserProfileSchema,
   updateUserLocationSchema
 };
 

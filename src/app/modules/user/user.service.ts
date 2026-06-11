@@ -1,11 +1,13 @@
 import { randomUserImage } from '../../../utilities/randomUserImage';
+import { deleteImageFromCloudinary } from '../../cloudinary/deleteImageFromCloudinary';
+import { uploadToCloudinary } from '../../cloudinary/uploadImageToCLoudinary';
 import { BadRequestError } from '../../errors/request/apiError';
 
 import { sendVerificationOtp } from '../auth/auth.utils';
 import { USER_ROLE, USER_STATUS } from './user.constant';
-import { IUser } from './user.interface';
+import { IUser, TProfileImage } from './user.interface';
 import User from './user.model';
-import { TRegistrationPayload } from './user.validations';
+import { TRegistrationPayload, TUserProfileUpdatePayload } from './user.validations';
 
 // create account
 const createAccount = async (payload: TRegistrationPayload) => {
@@ -69,6 +71,79 @@ const createAccount = async (payload: TRegistrationPayload) => {
 };
 
 
+const updateUserProfileImage = async (user: IUser, files: TProfileImage) => {
+  if (!files?.profile_image?.length) {
+    throw new BadRequestError('No profile image provided');
+  }
+
+  // save old urls
+  const oldAvatarUrl = user.avatar;
+
+  let newProfileImageUrl: string;
+
+  try {
+    const result = await uploadToCloudinary(
+      files.profile_image[0],
+      'profile_images'
+    );
+
+    if (!result?.secure_url) {
+      throw new BadRequestError('Cloudinary upload failed');
+    }
+
+    newProfileImageUrl = result.secure_url;
+  } catch (error) {
+    throw new BadRequestError('Image upload failed');
+  }
+
+  try {
+
+    user.avatar = newProfileImageUrl;
+    await user.save();
+
+  } catch (error) {
+    // Rollback: delete the newly uploaded image
+    await deleteImageFromCloudinary(newProfileImageUrl);
+    throw error;
+  }
+
+  // Now safely delete the OLD image
+  if (oldAvatarUrl) {
+    await deleteImageFromCloudinary(oldAvatarUrl);
+  }
+
+  return { avatar: newProfileImageUrl };
+};
+
+
+const updateUserProfile = async (user: IUser, payload: TUserProfileUpdatePayload) => {
+  console.log({ payload })
+  const result = await User.findByIdAndUpdate(
+    user._id,
+    { $set: payload },
+    { new: true }
+  );
+  return {
+    fullName: result?.fullName,
+    email: result?.email,
+    city: result?.city,
+    avatar: result?.avatar,
+    plan: result?.plan
+  };
+};
+
+const getUserProfile = async (user: IUser) => {
+  return {
+    fullName: user.fullName,
+    email: user.email,
+    city: user.city,
+    avatar: user.avatar,
+    plan: user.plan
+  };
+}
+
+
+
 const choosePlan = async (user: IUser, payload: { plan: string, faculty: string }) => {
   user.plan = payload.plan;
   if (payload.faculty) {
@@ -94,5 +169,8 @@ const getUserPlan = async (user: IUser) => {
 export const userService = {
   createAccount,
   choosePlan,
-  getUserPlan
+  getUserPlan,
+  updateUserProfileImage,
+  updateUserProfile,
+  getUserProfile,
 };

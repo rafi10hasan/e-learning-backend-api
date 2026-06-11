@@ -11,21 +11,29 @@ const enumerateErrorFormat = winston.format((info) => {
   return info;
 });
 
-const logFormat = winston.format.combine(enumerateErrorFormat(), winston.format.timestamp(), winston.format.json());
+const logFormat = winston.format.combine(
+  enumerateErrorFormat(),
+  winston.format.timestamp(),
+  winston.format.json()
+);
 
 const transports: winston.transport[] = [];
 
-if (config.node_env === 'production') {
+
+const isVercel = process.env.VERCEL === '1';
+
+if (config.node_env === 'production' && !isVercel) {
+
   // Log rotation for error logs
   transports.push(
     new DailyRotateFile({
       filename: path.join(process.cwd(), 'logs', 'error-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       level: 'error',
-      maxSize: '10m', // Max file size before rotation
-      maxFiles: '14d', // Keep logs for 14 days
-      zippedArchive: true, // Compress old logs
-    }),
+      maxSize: '10m',
+      maxFiles: '14d',
+      zippedArchive: true,
+    })
   );
 
   // Log rotation for combined logs
@@ -36,14 +44,17 @@ if (config.node_env === 'production') {
       maxSize: '10m',
       maxFiles: '14d',
       zippedArchive: true,
-    }),
+    })
   );
 } else {
-  // Only log to console in development
+
   transports.push(
     new winston.transports.Console({
-      format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
-    }),
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      ),
+    })
   );
 }
 

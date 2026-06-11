@@ -19,7 +19,7 @@ const startQuiz = asyncHandler(async (req: Request, res: Response) => {
 
 const completeQuiz = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
-  const result = await quizSessionService.completeQuiz(sessionId, req.user._id);
+  const result = await quizSessionService.completeQuiz(sessionId as string, req.user._id);
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,
@@ -35,7 +35,7 @@ const getReviewQuiz = asyncHandler(async (req: Request, res: Response) => {
   if (!index) {
     throw new BadRequestError("Question index is required.");
   }
-  const result = await quizSessionService.getQuestionReview(sessionId, req.user._id, Number(index));
+  const result = await quizSessionService.getQuestionReview(sessionId as string, req.user._id, Number(index));
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,
@@ -46,7 +46,7 @@ const getReviewQuiz = asyncHandler(async (req: Request, res: Response) => {
 
 const getSessionStatus = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
-  const result = await quizSessionService.getSessionStatus(sessionId, req.user._id);
+  const result = await quizSessionService.getSessionStatus(sessionId as string, req.user._id);
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,
@@ -58,7 +58,7 @@ const getSessionStatus = asyncHandler(async (req: Request, res: Response) => {
 
 const getQuizMapIntodb = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
-  const result = await quizSessionService.getQuizMap(sessionId, req.user._id);
+  const result = await quizSessionService.getQuizMap(sessionId as string, req.user._id);
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,

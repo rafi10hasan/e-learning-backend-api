@@ -1,18 +1,18 @@
 
 
-import { IUser } from "../user/user.interface";
+// import { IUser } from "../user/user.interface";
 
 
-import { TSubscriptionRequestPayload } from "./subscription.zod";
+// import { TSubscriptionRequestPayload } from "./subscription.zod";
 
-// send subscription request
-const sendSubscriptionPurchaseRequest = async (
-    user: IUser,
-    payload: TSubscriptionRequestPayload
-) => {
+// // send subscription request
+// const sendSubscriptionPurchaseRequest = async (
+//     user: IUser,
+//     payload: TSubscriptionRequestPayload
+// ) => {
     
-};
+// };
 
-export const subscriptionService = {
-    sendSubscriptionPurchaseRequest
-};
+// export const subscriptionService = {
+//     sendSubscriptionPurchaseRequest
+// };

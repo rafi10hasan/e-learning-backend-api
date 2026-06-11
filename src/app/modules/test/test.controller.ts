@@ -79,7 +79,7 @@ const getAllAdditionalTestsIntoDb = asyncHandler(async (req: Request, res: Respo
 const getQuestionsByTestIdIntoDb = asyncHandler(async (req: Request, res: Response) => {
   const { testId } = req.params;
 
-  const result = await testService.getQuestionsByTestId(testId, req.query);
+  const result = await testService.getQuestionsByTestId(testId as string, req.query);
 
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -96,7 +96,7 @@ const getQuestionsByTestIdIntoDb = asyncHandler(async (req: Request, res: Respon
 });
 
 const getTestById = asyncHandler(async (req: Request, res: Response) => {
-  const result = await testService.getTestById(req.params.id);
+  const result = await testService.getTestById(req.params.id as string);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -106,7 +106,7 @@ const getTestById = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const getTestWithQuestions = asyncHandler(async (req: Request, res: Response) => {
-  const result = await testService.getTestWithQuestions(req.params.id);
+  const result = await testService.getTestWithQuestions(req.params.id as string);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -118,7 +118,7 @@ const getTestWithQuestions = asyncHandler(async (req: Request, res: Response) =>
 // admin — question bank filter করে linkable questions দেখবে
 const getLinkableQuestions = asyncHandler(async (req: Request, res: Response) => {
   const result = await testService.getLinkableQuestions(
-    req.params.id,
+    req.params.id as string,
     req.query
   );
   sendResponse(res, {
@@ -131,7 +131,7 @@ const getLinkableQuestions = asyncHandler(async (req: Request, res: Response) =>
 
 const linkQuestions = asyncHandler(async (req: Request, res: Response) => {
   const result = await testService.linkQuestions(
-    req.params.id,
+    req.params.id as string,
     req.body.questionIds
   );
   sendResponse(res, {
@@ -144,8 +144,8 @@ const linkQuestions = asyncHandler(async (req: Request, res: Response) => {
 
 const removeQuestion = asyncHandler(async (req: Request, res: Response) => {
   const result = await testService.removeQuestion(
-    req.params.id,
-    req.params.questionId
+    req.params.id as string,
+    req.params.questionId as string
   );
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -157,7 +157,7 @@ const removeQuestion = asyncHandler(async (req: Request, res: Response) => {
 
 const reorderQuestions = asyncHandler(async (req: Request, res: Response) => {
   const result = await testService.reorderQuestions(
-    req.params.id,
+    req.params.id as string,
     req.body.questionIds
   );
   sendResponse(res, {
@@ -169,7 +169,7 @@ const reorderQuestions = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const publishTest = asyncHandler(async (req: Request, res: Response) => {
-  const result = await testService.publishTest(req.params.id);
+  const result = await testService.publishTest(req.params.id as string);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -179,7 +179,7 @@ const publishTest = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const updateTest = asyncHandler(async (req: Request, res: Response) => {
-  const result = await testService.updateTest(req.params.id, req.body);
+  const result = await testService.updateTest(req.params.id as string, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -189,7 +189,7 @@ const updateTest = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const deleteTest = asyncHandler(async (req: Request, res: Response) => {
-  await testService.deleteTest(req.params.id);
+  await testService.deleteTest(req.params.id as string);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,

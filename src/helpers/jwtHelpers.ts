@@ -45,8 +45,9 @@ const generateTokens = async (payload: JwtPayload) => {
 
 // create token
 const createToken = async (payload: JwtPayload) => {
+  const accessTokenExpiresIn = config.otp_token_expiresin as SignOptions['expiresIn'];
   const token = jwt.sign(payload, config.jwt_access_token_secret!, {
-    expiresIn:  config.otp_token_expiresin,
+    expiresIn: accessTokenExpiresIn,
   });
   return token;
 };
