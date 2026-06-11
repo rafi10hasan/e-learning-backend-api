@@ -3,8 +3,8 @@ import mongoose from 'mongoose';
 import app from './app';
 import config from './config';
 
-import seedingAdmin from './utilities/seeding';
 import { connectSocket } from './socket/connectSocket';
+import seedingAdmin from './utilities/seeding';
 
 let server: HTTPServer;
 
@@ -20,9 +20,10 @@ const runServer = async () => {
 
 
 
-  server = app.listen(config.server_port || 5002, config.base_url as string, () => {
-    console.log(`\x1b[33mServer is listening on port http://${config.base_url
-      }:${config.server_port || 5020}\x1b[0m`);
+  const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : config.base_url || 'localhost';
+
+  server = app.listen(config.server_port || 5002, host, () => {
+    console.log(`\x1b[33mServer is listening on port http://${host}:${config.server_port || 5020}\x1b[0m`);
   });
 
   seedingAdmin();
