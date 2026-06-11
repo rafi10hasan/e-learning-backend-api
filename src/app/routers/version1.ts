@@ -33,7 +33,6 @@ const appRouters = [
     path: '/content',
     router: contentRouter,
   },
-
   
   {
     path: '/home/dashboard',
