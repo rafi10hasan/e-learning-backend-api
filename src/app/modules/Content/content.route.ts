@@ -6,9 +6,9 @@ import { ContentController } from './content.controller';
 import { contentZodValidation } from './content.zod';
 
 
-const router = Router();
+const contentRouter = Router();
 
-router.post(
+contentRouter.post(
   '/create-or-update',
   authMiddleware(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN, USER_ROLE.STUDENT),
   validateRequest({
@@ -18,9 +18,9 @@ router.post(
 );
 
 // getAllContent
-router.get('/retrieve', authMiddleware(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN), ContentController.getAllContent);
+contentRouter.get('/retrieve', authMiddleware(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN), ContentController.getAllContent);
 
 // getContentByType
-router.get('/retrieve/:type', authMiddleware(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN,USER_ROLE.STUDENT), ContentController.getContentByType);
+contentRouter.get('/retrieve/:type', authMiddleware(USER_ROLE.ADMIN, USER_ROLE.SUPER_ADMIN,USER_ROLE.STUDENT), ContentController.getContentByType);
 
-export const contentRouter = router;
+export default contentRouter;

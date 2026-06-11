@@ -1,6 +1,5 @@
 import express from 'express';
 import authRouter from '../modules/auth/auth.route';
-import { contentRouter } from '../modules/content/content.route';
 import adminRouter from '../modules/dashboard';
 import departmentRouter from '../modules/department/department.route';
 import facultyRouter from '../modules/faculty/faculty.route';
@@ -11,6 +10,7 @@ import subjectRouter from '../modules/subject/subject.route';
 import testRouter from '../modules/test/test.route';
 import userRouter from '../modules/user/user.route';
 import homeDashboardRouter from '../modules/home/user.dashboard.route';
+import contentRouter from '../modules/content/content.route';
 
 
 const routersVersionOne = express.Router();

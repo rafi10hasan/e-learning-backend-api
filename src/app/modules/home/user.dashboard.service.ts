@@ -140,7 +140,7 @@ const getInProgressSessions = async (user: IUser) => {
     const sessions = await QuizSession.find({
         user: user._id,
         examType: user.plan,
-        status: { $in: [QUIZ_STATUS.IN_PROGRESS, QUIZ_STATUS.EXPIRED] },
+        status: { $in: [QUIZ_STATUS.IN_PROGRESS] },
     })
         .select("examType subjectIds durationSeconds startedAt currentIndex totalQuestions status")
         .populate("subjectIds", "name")
