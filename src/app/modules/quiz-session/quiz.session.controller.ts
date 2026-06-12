@@ -29,6 +29,17 @@ const completeQuiz = asyncHandler(async (req: Request, res: Response) => {
 });
 
 
+const getQuizSummary = asyncHandler(async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const result = await quizSessionService.getQuizSummary(sessionId as string, req.user._id);
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Quiz summary retrieved successfully.",
+    data: result,
+  });
+});
+
 const getReviewQuiz = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const { index } = req.body;
@@ -37,7 +48,7 @@ const getReviewQuiz = asyncHandler(async (req: Request, res: Response) => {
   }
   const result = await quizSessionService.getQuestionReview(sessionId as string, req.user._id, Number(index));
   sendResponse(res, {
-    statusCode: StatusCodes.CREATED,
+    statusCode: StatusCodes.OK,
     success: true,
     message: "Quiz review retrieved successfully.",
     data: result,
@@ -48,7 +59,7 @@ const getSessionStatus = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const result = await quizSessionService.getSessionStatus(sessionId as string, req.user._id);
   sendResponse(res, {
-    statusCode: StatusCodes.CREATED,
+    statusCode: StatusCodes.OK,
     success: true,
     message: "Session status retrieved successfully.",
     data: result,
@@ -60,7 +71,7 @@ const getQuizMapIntodb = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const result = await quizSessionService.getQuizMap(sessionId as string, req.user._id);
   sendResponse(res, {
-    statusCode: StatusCodes.CREATED,
+    statusCode: StatusCodes.OK,
     success: true,
     message: "Quiz map retrieved successfully.",
     data: result,
@@ -72,5 +83,6 @@ export const quizSessionController = {
   completeQuiz,
   getReviewQuiz,
   getSessionStatus,
-  getQuizMapIntodb
+  getQuizMapIntodb,
+  getQuizSummary
 }

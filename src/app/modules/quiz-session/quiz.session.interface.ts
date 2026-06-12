@@ -29,6 +29,8 @@ export interface IQuizSession extends Document {
   passageQuestionMap: {
     passageId: Types.ObjectId;
     questionIds: Types.ObjectId[];
+    start: number;
+    end:number;
   }[];
   markedQuestionIds: Types.ObjectId[];
   correctCount: number;   // default: 0

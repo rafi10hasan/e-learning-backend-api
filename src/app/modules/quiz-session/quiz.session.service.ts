@@ -136,18 +136,33 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
 
   // ── passageQuestionMap ──
   // getQuestion-এ dynamic questionRange calculate করতে লাগবে
-  const passageGroupMap = new Map<string, Types.ObjectId[]>();
-  for (const q of allQuestions) {
+  const passageGroupMap = new Map<string, { questionIds: Types.ObjectId[]; start: number; end: number }>();
+
+  allQuestions.forEach((q, idx) => {
     if (q.passage) {
       const key = q.passage.toString();
-      if (!passageGroupMap.has(key)) passageGroupMap.set(key, []);
-      passageGroupMap.get(key)!.push(q._id);
+      const position = idx + 1; // 1-based
+
+      if (!passageGroupMap.has(key)) {
+        passageGroupMap.set(key, {
+          questionIds: [],
+          start: position,
+          end: position,
+        });
+      }
+
+      const entry = passageGroupMap.get(key)!;
+      entry.questionIds.push(q._id);
+      entry.end = position; // শেষ question-এর position update
     }
-  }
+  });
+
   const passageQuestionMap = [...passageGroupMap.entries()].map(
-    ([passageId, qIds]) => ({
+    ([passageId, data]) => ({
       passageId: new Types.ObjectId(passageId),
-      questionIds: qIds,
+      questionIds: data.questionIds,
+      start: data.start,   
+      end: data.end,     
     })
   );
 
@@ -402,11 +417,38 @@ const getQuizMap = async (sessionId: string, userId: Types.ObjectId) => {
   };
 }
 
+// get quiz summary
+
+const getQuizSummary = async (
+  sessionId: string,
+  userId: Types.ObjectId
+) => {
+  console.log({ sessionId, userId })
+  const session = await QuizSession.findOne({
+    _id: new Types.ObjectId(sessionId),
+    user: userId,
+  }).select("status totalQuestions attempts markedQuestionIds");
+
+  if (!session) throw new NotFoundError("Session not found.");
+  if (session.status !== "in_progress") throw new BadRequestError("Quiz is not in progress.");
+
+  const answeredCount = session.attempts.length;
+  const markedCount = session.markedQuestionIds.length;
+  const unansweredCount = session.totalQuestions - answeredCount;
+
+  return {
+    totalQuestions: session.totalQuestions,
+    answeredCount,
+    unansweredCount,
+    markedCount,
+  };
+};
 
 export const quizSessionService = {
   startQuiz,
   completeQuiz,
   getQuestionReview,
   getSessionStatus,
-  getQuizMap
+  getQuizMap,
+  getQuizSummary,
 };

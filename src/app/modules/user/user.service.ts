@@ -128,7 +128,8 @@ const updateUserProfile = async (user: IUser, payload: TUserProfileUpdatePayload
     email: result?.email,
     city: result?.city,
     avatar: result?.avatar,
-    plan: result?.plan
+    plan: result?.plan,
+
   };
 };
 
@@ -138,10 +139,10 @@ const getUserProfile = async (user: IUser) => {
     email: user.email,
     city: user.city,
     avatar: user.avatar,
-    plan: user.plan
+    plan: user.plan,
+    planStatus: user.subscription || null,
   };
 }
-
 
 
 const choosePlan = async (user: IUser, payload: { plan: string, faculty: string }) => {

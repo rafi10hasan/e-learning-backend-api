@@ -36,6 +36,12 @@ quizRouter.patch(
   quizSessionController.getSessionStatus,
 );
 
+quizRouter.get(
+  '/summary/:sessionId',
+  authMiddleware(USER_ROLE.STUDENT),
+  quizSessionController.getQuizSummary,
+);
+
 
 quizRouter.get(
   '/map/:sessionId',
