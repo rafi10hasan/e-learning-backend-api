@@ -12,10 +12,19 @@ export const validateRequest = (schemas: { body?: z.ZodType<any>; query?: z.ZodT
       req.body = await schemas.body.parseAsync(req.body);
     }
     if (schemas.query) {
-      req.query = await schemas.query.parseAsync(req.query);
+      const parsedQuery = await schemas.query.parseAsync(req.query);
+      // Clean out the old unvalidated keys
+      for (const key in req.query) { delete req.query[key]; }
+      // Safely assign the parsed data into the existing object
+      Object.assign(req.query, parsedQuery);
     }
+
     if (schemas.params) {
-      req.params = await schemas.params.parseAsync(req.params);
+      const parsedParams = await schemas.params.parseAsync(req.params);
+      // Clean out the old unvalidated keys
+      for (const key in req.params) { delete req.params[key]; }
+      // Safely assign the parsed data into the existing object
+      Object.assign(req.params, parsedParams);
     }
     next();
   });
