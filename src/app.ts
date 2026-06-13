@@ -36,6 +36,7 @@ app.use(
       'http://localhost:3000/',
       'http://localhost:3002/'
     ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
   }),
 );
 app.use(express.urlencoded({ extended: true }));
