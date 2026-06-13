@@ -32,11 +32,11 @@ app.get('/', (req, res) => {
 app.use(
   cors({
     origin: [
-      'http://localhost:3001/',
-      'http://localhost:3000/',
-      'http://localhost:3002/'
+      'http://localhost:3001',
+      'http://localhost:3000',
+      'http://localhost:3002'
     ],
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   }),
 );
 app.use(express.urlencoded({ extended: true }));
