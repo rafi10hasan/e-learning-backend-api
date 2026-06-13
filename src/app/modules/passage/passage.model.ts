@@ -10,10 +10,6 @@ const PassageSchema = new Schema<IPassage>(
     title: { type: String, required: true },
     content: { type: String, required: true },
     passageImageUrl: { type: String, default: null },
-    questionRange: {
-      from: { type: Number, required: true },
-      to: { type: Number, required: true },
-    },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true, versionKey: false }

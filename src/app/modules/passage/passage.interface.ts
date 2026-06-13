@@ -15,12 +15,7 @@ export interface IPassage extends Document {
   passageCode: string;
   title: string;
   content: string;
-  examType: TExamTypes;
-  passageImageUrl?: string;
-  questionRange: IQuestionRange;
-  subject: Types.ObjectId | null;
-  faculty: Types.ObjectId | null;
-  departments: Types.ObjectId[] | null;
+  passageImageUrl: string | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
