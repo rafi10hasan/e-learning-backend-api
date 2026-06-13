@@ -32,8 +32,9 @@ app.get('/', (req, res) => {
 app.use(
   cors({
     origin: [
-      'http://13.49.200.198',
-      'http://52.45.173.22',
+      'http://localhost:3001/',
+      'http://localhost:3000/',
+      'http://localhost:3002/'
     ],
   }),
 );
