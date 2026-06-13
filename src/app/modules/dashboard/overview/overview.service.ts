@@ -16,11 +16,7 @@ const getStatsOverview = async () => {
         User.find({})
             .lean(),
 
-        User.countDocuments({
-            isActive: true,
-            isDeleted: false,
-            currentRole: { $nin: ['admin', 'super-admin'] }
-        })
+        User.countDocuments({})
 
     ]);
 

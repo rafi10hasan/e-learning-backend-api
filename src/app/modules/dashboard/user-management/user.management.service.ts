@@ -12,7 +12,7 @@ const getUserStats = async () => {
             .lean(),
     ]);
 
-
+   console.log("Total users:", totalUsers);
     const activeAccountUsers = allUsers.filter((u) => u.status === 'active').length;
     const blockedAccountUsers = allUsers.filter((u) => u.status === 'blocked').length;
     const disabledAccountUsers = allUsers.filter((u) => u.status === 'disabled').length;
