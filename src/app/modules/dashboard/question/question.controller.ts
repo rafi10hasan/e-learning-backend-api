@@ -62,6 +62,17 @@ const createPassage = asyncHandler(async (req: Request, res: Response) => {
 });
 
 
+const getPassages = asyncHandler(async (req: Request, res: Response) => {
+    const result = await dashboardQuestionService.getPassages(req.query);
+    sendResponse(res, {
+        statusCode: StatusCodes.OK,
+        success: true,
+        message: "Passages retrieved successfully.",
+        meta: result.meta,
+        data: result.data,
+    });
+});
+
 const importTestsFromCsvIntoDb = asyncHandler(async (req: Request, res: Response) => {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
     const uploadedFile = files?.csv_file?.[0];
@@ -98,5 +109,6 @@ export const dashboardQuestionController = {
     getAllTestArchiveIntoDashboard,
     createPassage,
     importTestsFromCsvIntoDb,
-    getQuestionById
+    getQuestionById,
+    getPassages
 }

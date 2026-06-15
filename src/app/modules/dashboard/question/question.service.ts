@@ -733,48 +733,51 @@ const createPassage = async (payload: TCreatePassagePayload
     return passage;
 };
 
-const getPassages = async (query: {page:string, limit:string, searchTerm?: string}) => {
- const { searchTerm, page: reqPage, limit: reqLimit } = query;
+// get passages
+const getPassages = async (query: Record<string, unknown>) => {
+    const { searchTerm, page, limit } = query;
 
     // 1. Number convert kora ebong fallback set kora
-    const page = parseInt(reqPage) || 1;
-    const limit = parseInt(reqLimit) || 10;
-    const skip = (page - 1) * limit;
+    const pageNumber = parseInt(page as string) || 1;
+    const limitNumber = parseInt(limit as string) || 10;
+    const skip = (pageNumber - 1) * limitNumber;
 
-    // 2. FilterQuery bad diye normal dynamic object toiri kora
-    // 'any' use korar karone FilterQuery niye ar TypeScript-er kono jhamela thakbe na
-    const mongooseQuery: any = { isActive: true }; 
+    // 2. Dynamic query object toiri kora
+    const mongooseQuery: any = { isActive: true };
 
     if (searchTerm) {
         mongooseQuery.$or = [
-            { title: { $regex: searchTerm, $options: 'i' } },       
-            { content: { $regex: searchTerm, $options: 'i' } },     
-            { passageCode: { $regex: searchTerm, $options: 'i' } }  
+            { title: { $regex: searchTerm, $options: 'i' } },
+            { content: { $regex: searchTerm, $options: 'i' } },
+            { passageCode: { $regex: searchTerm, $options: 'i' } }
         ];
     }
 
     // 3. Database query execute kora
     const [passages, totalPassages] = await Promise.all([
         Passage.find(mongooseQuery)
-            .sort({ createdAt: -1 }) 
+            .sort({ createdAt: -1 })
             .skip(skip)
-            .limit(limit),
+            .limit(limitNumber),
         Passage.countDocuments(mongooseQuery)
     ]);
 
     // 4. Total pages calculate kora
-    const totalPages = Math.ceil(totalPassages / limit);
-    
+    const totalPages = Math.ceil(totalPassages / limitNumber);
+
+    // 5. Thikthak bhabe meta data response return kora
     return {
         meta: {
-            totalPassages,
-            totalPages,
-            currentPage: page,
-            limit
+            page: pageNumber,
+            limit: limitNumber,
+            total: totalPassages, // Total data count
+            totalPages: totalPages // Total page count
         },
         data: passages
     };
-}
+};
+
+//
 
 const importTestsFromFile = async (
     fileBuffer: Buffer

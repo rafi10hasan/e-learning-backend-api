@@ -49,6 +49,13 @@ dashboardQuestionRouter.post(
     dashboardQuestionController.createPassage,
 );
 
+
+dashboardQuestionRouter.get(
+    '/passages',
+    authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
+    dashboardQuestionController.getPassages,
+);
+
 dashboardQuestionRouter.post(
     '/import-csv',
     authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN),
