@@ -65,6 +65,7 @@ const getSubjectsOrDepartmentsByExamType = async (plan: TExamTypes, facultyName:
             subjectId: subject._id,
             name: subject.name,
             slug: subject.slug,
+            isElective: subject.isElective
         }));
     }
     else if (plan === EXAM_TYPES.ENTRANCE_EXAM) {

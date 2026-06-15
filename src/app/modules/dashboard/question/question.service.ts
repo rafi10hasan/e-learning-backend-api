@@ -1,19 +1,18 @@
 import mongoose, { Schema, Types } from "mongoose";
 import withTransaction from "../../../../helpers/withTransaction";
-import { EXAM_TYPES } from "../../../../interfaces";
 import { uploadToCloudinary } from "../../../cloudinary/uploadImageToCLoudinary";
 import { BadRequestError, NotFoundError } from "../../../errors/request/apiError";
 import Department from "../../department/department.model";
 import Faculty from "../../faculty/faculty.model";
-import { PassageFiles } from "../../passage/passage.interface";
+import { IPassage, PassageFiles } from "../../passage/passage.interface";
 import Passage from "../../passage/passage.model";
 import Question from "../../question/question.model";
 import { QuizSession } from "../../quiz-session/quiz.session.model";
 import Subject from "../../subject/subject.model";
 import Test from "../../test/test.model";
 import User from "../../user/user.model";
-import { dedupeRowsWithinFile, enforceAccessConsistency, ImportIssue, ImportValidationSummary, NormalizedImportRow, normalizeImportRow, readTabularRows, resolveRowContexts, upsertTestAndQuestions, validateFileLevelRules, validateRowSchemas } from "./question.utils";
-import { importTestCsvRowSchema, TCreatePassagePayload, TQuestionListInput, TTestListInput } from "./question.zod";
+import { dedupeRowsWithinFile, enforceAccessConsistency, ImportIssue, ImportValidationSummary, readTabularRows, resolveRowContexts, upsertTestAndQuestions, validateFileLevelRules, validateRowSchemas } from "./question.utils";
+import { TCreatePassagePayload, TQuestionListInput, TTestListInput } from "./question.zod";
 
 
 
@@ -734,6 +733,48 @@ const createPassage = async (payload: TCreatePassagePayload
     return passage;
 };
 
+const getPassages = async (query: {page:string, limit:string, searchTerm?: string}) => {
+ const { searchTerm, page: reqPage, limit: reqLimit } = query;
+
+    // 1. Number convert kora ebong fallback set kora
+    const page = parseInt(reqPage) || 1;
+    const limit = parseInt(reqLimit) || 10;
+    const skip = (page - 1) * limit;
+
+    // 2. FilterQuery bad diye normal dynamic object toiri kora
+    // 'any' use korar karone FilterQuery niye ar TypeScript-er kono jhamela thakbe na
+    const mongooseQuery: any = { isActive: true }; 
+
+    if (searchTerm) {
+        mongooseQuery.$or = [
+            { title: { $regex: searchTerm, $options: 'i' } },       
+            { content: { $regex: searchTerm, $options: 'i' } },     
+            { passageCode: { $regex: searchTerm, $options: 'i' } }  
+        ];
+    }
+
+    // 3. Database query execute kora
+    const [passages, totalPassages] = await Promise.all([
+        Passage.find(mongooseQuery)
+            .sort({ createdAt: -1 }) 
+            .skip(skip)
+            .limit(limit),
+        Passage.countDocuments(mongooseQuery)
+    ]);
+
+    // 4. Total pages calculate kora
+    const totalPages = Math.ceil(totalPassages / limit);
+    
+    return {
+        meta: {
+            totalPassages,
+            totalPages,
+            currentPage: page,
+            limit
+        },
+        data: passages
+    };
+}
 
 const importTestsFromFile = async (
     fileBuffer: Buffer
@@ -819,6 +860,7 @@ export const dashboardQuestionService = {
     getAllQuestions,
     getAllTestArchive,
     createPassage,
+    getPassages,
     importTestsFromFile,
     getQuestionById,
 }

@@ -54,9 +54,6 @@ const QuizSessionSchema = new Schema<IQuizSession>(
       type: [Schema.Types.ObjectId],
       ref: "Department",
     },
-    difficultyLevel: {
-      type: String,
-    },
     questionIds: {
       type: [Schema.Types.ObjectId],
       ref: "Question",

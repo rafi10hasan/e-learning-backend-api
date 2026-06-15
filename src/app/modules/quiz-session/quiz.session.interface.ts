@@ -17,8 +17,6 @@ export interface IQuizSession extends Document {
   subjectIds: Types.ObjectId[];
   faculty?: Types.ObjectId;
   departmentIds?: Types.ObjectId[];
-  difficultyLevel?: TQuestionDifficulty;
-
   questionIds: Types.ObjectId[];
   totalQuestions: number;
   attempts: IQuestionAttempt[];
