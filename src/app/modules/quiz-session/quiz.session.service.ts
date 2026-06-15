@@ -15,7 +15,7 @@ import { TQuizSessionPayload } from "./quiz.session.zod";
 const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
   const {
     subjectIds, facultyId,
-    departmentIds, difficultyLevel, questionCount, year,
+    departmentIds, questionCount, year,
   } = payload;
 
   // একটাই in_progress session থাকতে পারবে
@@ -65,7 +65,6 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
   // premium না থাকলে শুধু free questions
   if (!isPremium) baseFilter.access = "free";
   if (year) baseFilter.year = Number(year);
-  if (difficultyLevel) baseFilter.difficultyLevel = difficultyLevel;
   if (facultyId) baseFilter.faculty = new Types.ObjectId(facultyId);
   if (departmentIds?.length) {
     baseFilter.departments = {
@@ -172,7 +171,6 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
     subjectIds: subjectIds.map((id: string) => new Types.ObjectId(id)),
     ...(facultyId && { faculty: new Types.ObjectId(facultyId) }),
     ...(departmentIds?.length && { departmentIds: departmentIds.map((id: string) => new Types.ObjectId(id)) }),
-    ...(difficultyLevel && { difficultyLevel }),
     ...(year && { year: Number(year) }),
     questionIds,
     totalQuestions,
