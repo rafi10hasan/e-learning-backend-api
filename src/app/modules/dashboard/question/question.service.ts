@@ -12,7 +12,7 @@ import { QuizSession } from "../../quiz-session/quiz.session.model";
 import Subject from "../../subject/subject.model";
 import Test from "../../test/test.model";
 import User from "../../user/user.model";
-import { buildQuestionContext, NormalizedImportRow, normalizeImportRow, readCsvRows } from "./question.utils";
+import { dedupeRowsWithinFile, enforceAccessConsistency, ImportIssue, ImportValidationSummary, NormalizedImportRow, normalizeImportRow, readTabularRows, resolveRowContexts, upsertTestAndQuestions, validateFileLevelRules, validateRowSchemas } from "./question.utils";
 import { importTestCsvRowSchema, TCreatePassagePayload, TQuestionListInput, TTestListInput } from "./question.zod";
 
 
@@ -735,252 +735,82 @@ const createPassage = async (payload: TCreatePassagePayload
 };
 
 
-const importTestsFromCsvFile = async (fileBuffer: Buffer) => {
-    // Parse the CSV file into rows first.
-    const rawRows = await readCsvRows(fileBuffer);
+const importTestsFromFile = async (
+    fileBuffer: Buffer
+): Promise<{
+    summary: ImportValidationSummary;
+    test?: any;
+    questions?: any[];
+}> => {
+    const issues: ImportIssue[] = [];
+
+    // 1. Parse the uploaded file into raw row objects.
+    const rawRows = readTabularRows(fileBuffer);
 
     if (rawRows.length === 0) {
-        throw new BadRequestError("CSV file is empty");
-    }
-
-    // Validate every row with zod before touching the database.
-    const parsedRows = rawRows.map((row, index) => {
-        const normalizedRow = normalizeImportRow(row);
-        console.log({ normalizedRow });
-        const validation = importTestCsvRowSchema.safeParse(normalizedRow);
-
-        if (!validation.success) {
-            const firstIssue = validation.error.issues[0];
-            throw new BadRequestError(`CSV validation failed at row ${index + 1}: ${firstIssue.message}`);
-        }
-
-        return validation.data as NormalizedImportRow;
-    });
-
-    const firstRow = parsedRows[0];
-    const uniqueExamTypes = new Set(parsedRows.map((row) => row.examType));
-    const testCode = parsedRows.find((row) => row.testCode.trim().length > 0)?.testCode.trim();
-    const testName = parsedRows.find((row) => row.testName.trim().length > 0)?.testName.trim();
-
-    if (uniqueExamTypes.size !== 1) {
-        throw new BadRequestError("All CSV rows must have the same examType");
-    }
-
-    if (!testCode) {
-        throw new BadRequestError("testCode is required in at least one CSV row");
-    }
-
-    if (!testName) {
-        throw new BadRequestError("testName is required in at least one CSV row");
-    }
-
-    const mismatchedTestCode = parsedRows.find(
-        (row) => row.testCode.trim().length > 0 && row.testCode.trim() !== testCode
-    );
-    if (mismatchedTestCode) {
-        throw new BadRequestError("All non-empty testCode values must match");
-    }
-
-    const mismatchedTestName = parsedRows.find(
-        (row) => row.testName.trim().length > 0 && row.testName.trim() !== testName
-    );
-    if (mismatchedTestName) {
-        throw new BadRequestError("All non-empty testName values must match");
-    }
-
-    if (firstRow.examType === EXAM_TYPES.ENTRANCE_EXAM) {
-        const faculty = parsedRows.find((row) => (row.faculty ?? "").trim().length > 0)?.faculty?.trim() ?? "";
-
-        if (!faculty) {
-            throw new BadRequestError("faculty is required for provime CSV rows");
-        }
-
-        const mismatchedFaculty = parsedRows.find(
-            (row) => {
-                const currentFaculty = (row.faculty ?? "").trim();
-                return currentFaculty.length > 0 && currentFaculty !== faculty;
-            }
-        );
-        if (mismatchedFaculty) {
-            throw new BadRequestError("All provime CSV rows must have the same faculty");
-        }
-
-        const missingDepartments = parsedRows.find((row) => !row.departments || row.departments.length === 0);
-        if (missingDepartments) {
-            throw new BadRequestError("Each provime CSV row must have at least one department");
-        }
-
-        // const subjectRow = parsedRows.find((row) => (row.subjects ?? "").trim().length > 0);
-        // if (subjectRow) {
-        //   throw new BadRequestError("subject is not allowed for provime CSV rows");
-        // }
-    } else {
-        // For matura / semi_matura, each row must specify a subject (tests may include multiple subjects).
-        const missingSubject = parsedRows.find((row) => (row.subject ?? "").trim().length === 0);
-        if (missingSubject) {
-            throw new BadRequestError("Each matura or semi_matura CSV row must have a subject");
-        }
-
-        const invalidFaculty = parsedRows.find((row) => (row.faculty ?? "").trim().length > 0);
-        if (invalidFaculty) {
-            throw new BadRequestError("faculty is not allowed for matura or semi matura CSV rows");
-        }
-
-        const invalidDepartments = parsedRows.find((row) => row.departments && row.departments.length > 0);
-        if (invalidDepartments) {
-            throw new BadRequestError("departments are not allowed for matura or semi matura CSV rows");
-        }
-    }
-
-    // Prevent duplicate question text inside the same CSV file.
-    const duplicateQuestion = parsedRows.find(
-        (row, index) => parsedRows.findIndex((item) => item.questionText === row.questionText) !== index
-    );
-    if (duplicateQuestion) {
-        throw new BadRequestError(`Duplicate questionText found in CSV: ${duplicateQuestion.questionText}`);
-    }
-
-    const resolvedContexts = await Promise.all(parsedRows.map((row) => buildQuestionContext(row)));
-
-    console.log({ resolvedContexts });
-
-    return withTransaction(async (session) => {
-        const existingTest = await Test.findOne({ testCode }).session(session);
-
-        if (
-            existingTest &&
-            (
-                existingTest.examType !== firstRow.examType ||
-                existingTest.year !== firstRow.year ||
-                existingTest.testType !== firstRow.testType ||
-                existingTest.access !== firstRow.access
-            )
-        ) {
-            throw new BadRequestError(`Test already exists with a different exam type, year, test type or access: ${testCode}`);
-        }
-
-        if (existingTest && existingTest.examType !== firstRow.examType) {
-            throw new BadRequestError(`Test already exists with a different examType: ${testCode}`);
-        }
-
-        const createdTest = existingTest ?? (await Test.create(
-            [
-                {
-                    title: testName,
-                    testCode,
-                    examType: firstRow.examType,
-                    year: firstRow.year,
-                    subjects: [...new Set(resolvedContexts.map(item => item.subject.toString()))].map(id => new Types.ObjectId(id)),
-                    testType: firstRow.testType,
-                    access: firstRow.access,
-                    totalQuestions: 0,
-                    ...resolvedContexts[0],
-                },
-            ],
-            { session }
-        ))[0];
-
-        // Determine which rows already have corresponding Question documents.
-        const rowKey = (r: NormalizedImportRow) => `${r.questionText.trim()}||${r.examType}||${r.year}`;
-        const keys = parsedRows.map((r) => ({ key: rowKey(r), r }));
-
-        const orConditions = parsedRows.map((r) => ({
-            questionText: r.questionText.trim(),
-            examType: r.examType,
-            year: r.year,
-        }));
-
-        const existingQuestions =
-            orConditions.length > 0 ? await Question.find({ $or: orConditions }).session(session) : [];
-
-        const existingMap = new Map<string, typeof existingQuestions[0]>();
-        for (const q of existingQuestions) {
-            const k = `${q.questionText.trim()}||${q.examType}||${q.year}`;
-            existingMap.set(k, q);
-        }
-
-        const toCreateRows: Array<{ row: NormalizedImportRow; index: number }> = [];
-        const toLinkExistingIds: string[] = [];
-
-        keys.forEach(({ key, r }, idx) => {
-            const existing = existingMap.get(key);
-            if (existing) {
-                // If existing question already linked to this test, skip; otherwise mark to link.
-                const linked = existing.testIds?.map((id: any) => id.toString()).includes(createdTest._id.toString());
-                if (!linked) toLinkExistingIds.push(existing._id.toString());
-            } else {
-                toCreateRows.push({ row: r, index: idx });
-            }
-        });
-
-        // Create new questions for rows that don't exist yet.
-        const newQuestionDocs = await Question.insertMany(
-            toCreateRows.map(({ row, index }) => ({
-                examType: row.examType,
-                year: row.year,
-                questionText: row.questionText.trim(),
-                questionImageUrl: row.questionImageUrl,
-                options: row.options,
-                access: row.access,
-                correctOptionIndex: row.correctOptionIndex,
-                explanation: row.explanation,
-                difficultyLevel: row.difficultyLevel,
-                status: row.status,
-                testIds: [createdTest._id],
-                ...(row.examType === EXAM_TYPES.ENTRANCE_EXAM
-                    ? {
-                        faculty: resolvedContexts[index].faculty,
-                        departments: resolvedContexts[index].departments,
-                        subject: resolvedContexts[index].subject,
-                        passage: resolvedContexts[index].passage,
-                    }
-                    : {
-                        subject: resolvedContexts[index].subject,
-                        passage: resolvedContexts[index].passage,
-                    }),
-            })),
-            { session }
-        );
-
-        // Link existing questions to the test where needed.
-        if (toLinkExistingIds.length > 0) {
-            await Question.updateMany(
-                { _id: { $in: toLinkExistingIds } },
-                { $addToSet: { testIds: new mongoose.Types.ObjectId(createdTest._id) } },
-                { session }
-            );
-        }
-
-        // Fetch up-to-date existing questions that were linked so we can return them.
-        const newlyLinkedExisting =
-            toLinkExistingIds.length > 0
-                ? await Question.find({ _id: { $in: toLinkExistingIds } }).session(session)
-                : [];
-
-        // Update test metadata: title and totalQuestions increment.
-        const totalAdded = newQuestionDocs.length + newlyLinkedExisting.length;
-        await Test.findByIdAndUpdate(
-            createdTest._id,
-            {
-                $set: {
-                    title: testName,
-                    testCode,
-                    examType: firstRow.examType,
-                    year: firstRow.year,
-                    testType: firstRow.testType,
-                    access: firstRow.access,
-                    ...resolvedContexts[0],
-                },
-                $inc: { totalQuestions: totalAdded },
-            },
-            { session }
-        );
-
         return {
-            test: await Test.findById(createdTest._id).session(session),
-            questions: [...newlyLinkedExisting, ...newQuestionDocs],
+            summary: {
+                totalRows: 0,
+                validRows: 0,
+                warnings: [],
+                errors: [{ row: 0, level: "error", message: "File is empty" }],
+            },
         };
+    }
+
+    // 2. Validate each row's shape with zod.
+    const schemaValidRows = validateRowSchemas(rawRows, issues);
+
+    // 3. Validate file-level rules (examType consistency, testCode/testName, exam-type rules).
+    const fileLevelInfo = validateFileLevelRules(schemaValidRows, issues);
+
+    // 4. Drop duplicate questionText rows within this file (warning, not error).
+    const dedupedRows = dedupeRowsWithinFile(schemaValidRows, issues);
+
+    // 5. Resolve faculty/department/subject/passage references for each row.
+    const resolvedRows = await resolveRowContexts(dedupedRows, issues);
+
+    const totalRows = rawRows.length;
+
+    // Stop here (without touching the DB) if there are blocking errors,
+    // or file-level info could not be determined.
+    if (issues.some((i) => i.level === "error") || !fileLevelInfo) {
+        return {
+            summary: {
+                totalRows,
+                validRows: resolvedRows.length,
+                warnings: issues.filter((i) => i.level === "warning"),
+                errors: issues.filter((i) => i.level === "error"),
+            },
+        };
+    }
+
+    const { testCode, testName, firstRow } = fileLevelInfo;
+
+    // 6. Write to the database inside a transaction.
+    const result = await withTransaction(async (session) => {
+        // Enforce the free/premium duplicate rule against existing DB questions.
+        const allowedRows = await enforceAccessConsistency(resolvedRows, issues, session);
+
+        return upsertTestAndQuestions({
+            testCode,
+            testName,
+            firstRow,
+            rows: allowedRows,
+            session,
+        });
     });
+
+    return {
+        summary: {
+            totalRows,
+            validRows: resolvedRows.length - issues.filter((i) => i.level === "error").length,
+            warnings: issues.filter((i) => i.level === "warning"),
+            errors: issues.filter((i) => i.level === "error"),
+        },
+        test: result.test,
+        questions: result.questions,
+    };
 };
 
 
@@ -989,6 +819,6 @@ export const dashboardQuestionService = {
     getAllQuestions,
     getAllTestArchive,
     createPassage,
-    importTestsFromCsvFile,
+    importTestsFromFile,
     getQuestionById,
 }

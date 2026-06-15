@@ -168,14 +168,9 @@ export const testListValidation = z.object({
 
 
 export const passageSchema = z.object({
-
   passageCode: z.string({ message: "Passage code is required" }),
   title: z.string({ message: "Title is required" }),
   content: z.string({ message: "Content is required" }),
-  questionRange: z.object({
-    from: z.number({ message: "Question range 'from' must be a number" }).int({ message: "Question range 'from' must be an integer" }).min(1, { message: "Question range 'from' must be at least 1" }),
-    to: z.number({ message: "Question range 'to' must be a number" }).int({ message: "Question range 'to' must be an integer" }).min(1, { message: "Question range 'to' must be at least 1" }),
-  }),
 })
 
 
@@ -183,6 +178,7 @@ const csvQuestionOptionSchema = z.object({
   text: z.string({ message: "Option text is required" }).min(1, { message: "Option text cannot be empty" }),
   imageUrl: z.string({ message: "Option image URL must be a string" }).optional(),
 });
+
 export const importTestCsvRowSchema = z.object({
   testCode: z.string({ message: "testCode must be a string" }).optional(),
   testName: z.string({ message: "testName is required" }).optional(),

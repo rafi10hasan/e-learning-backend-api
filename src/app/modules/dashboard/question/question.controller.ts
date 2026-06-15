@@ -64,23 +64,31 @@ const createPassage = asyncHandler(async (req: Request, res: Response) => {
 
 const importTestsFromCsvIntoDb = asyncHandler(async (req: Request, res: Response) => {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
-    const csvFile = files?.csv_file?.[0];
+    const uploadedFile = files?.csv_file?.[0];
 
-    if (!csvFile) {
+    if (!uploadedFile) {
         return res.status(StatusCodes.BAD_REQUEST).json({
             success: false,
-            message: "CSV file upload is required",
+            message: "File upload is required (.csv or .xlsx)",
         });
     }
 
-    // Delegate the CSV import work to the service layer.
-    const result = await dashboardQuestionService.importTestsFromCsvFile(csvFile.buffer);
+    const { summary, test, questions } = await dashboardQuestionService.importTestsFromFile(uploadedFile.buffer);
+
+    if (summary.errors.length > 0 || !test) {
+        return sendResponse(res, {
+            statusCode: StatusCodes.OK,
+            success: false,
+            message: "Validation completed with errors. No data was imported.",
+            data: { summary },
+        });
+    }
 
     sendResponse(res, {
         statusCode: StatusCodes.CREATED,
         success: true,
         message: "Test and questions imported successfully.",
-        data: result,
+        data: { summary, test, questions },
     });
 });
 

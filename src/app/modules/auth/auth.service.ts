@@ -24,7 +24,7 @@ const loginWithCredential = async (credential: TLoginPayload) => {
 
   const user = await userRepository.findByEmail(email);
   if (!user) throw new UnauthorizedError('user not found with this email');
-  
+
   console.log(user)
   if (user.deletedAt) {
     throw new UnauthorizedError('This account has been deleted. if you want to restore this account, create account with same email again');
@@ -45,12 +45,22 @@ const loginWithCredential = async (credential: TLoginPayload) => {
   if (!isPasswordMatch) throw new BadRequestError(`password didn't match`);
 
   if (!user.verification.emailVerifiedAt) {
-    await sendVerificationOtp(user._id, email);
-    return {
-      status: 'UNVERIFIED'
-    };
+    try {
+      await sendVerificationOtp(user._id, email);
+      return {
+        status: 'UNVERIFIED',
+        message: 'A new verification code has been sent to your email.'
+      };
+    } catch (error) {
+      // If the error is due to the OTP still being valid, still let the frontend know they are UNVERIFIED
+      if (error instanceof BadRequestError && error.message.includes('OTP still valid')) {
+        return {
+          status: 'UNVERIFIED',
+          message: 'An active verification code was already sent. Please check your inbox.'
+        };
+      };
+    }
   }
-
   if (user.status === USER_STATUS.DISABLED) {
     user.status = USER_STATUS.ACTIVE;
     user.disabledAt = null;
@@ -72,7 +82,7 @@ const loginWithCredential = async (credential: TLoginPayload) => {
 // authentication with Google
 const loginWithOAuth = async (credential: socialLoginPayload) => {
   const { provider, token } = credential;
-  
+
   let payload;
   if (provider === 'google') {
     const ticket = await googleClient.verifyIdToken({
@@ -288,7 +298,7 @@ const forgotPassword = async (email: string) => {
   await OtpToken.create({
     userId: user._id, // ← was missing
     type: 'password_reset',
-    otpHash: otp,   
+    otpHash: otp,
     expiresAt: new Date(Date.now() + expiresInMinutes * 60 * 1000),
   });
 

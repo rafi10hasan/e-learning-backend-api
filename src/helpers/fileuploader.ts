@@ -1,8 +1,15 @@
 import { Request } from 'express';
 import multer from 'multer';
 
-const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/svg+xml', 'text/csv'];
+const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'image/svg+xml'];
 
+// xlsx/csv files can arrive under several different mimetypes depending on the browser/OS.
+const SPREADSHEET_MIME_TYPES = [
+  'text/csv',
+  'application/vnd.ms-excel', // .xls, and some browsers send this for .csv too
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+  'application/octet-stream', // some browsers/OSes send this for .xlsx
+];
 
 const storage = multer.memoryStorage();
 
@@ -30,30 +37,41 @@ export const MAX_FILE_COUNTS: Record<string, number> = {
   option_c_image: 1,
   option_d_image: 1,
   csv_file: 1,
-  passage_image:1
+  passage_image: 1,
 };
 
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: any) => {
   const allowedFieldnames = Object.keys(MAX_FILE_SIZES);
-  console.log(file)
+
   // Field validation
   if (!allowedFieldnames.includes(file.fieldname)) {
     return cb(new Error(`Invalid fieldname: ${file.fieldname}`));
   }
 
-  // Image-only validation (including driving_license)
+  // csv_file: accept .csv and .xlsx/.xls, validated separately from image fields
+  if (file.fieldname === 'csv_file') {
+    const extension = file.originalname.split('.').pop()?.toLowerCase();
+    const validExtension = extension === 'csv' || extension === 'xlsx' || extension === 'xls';
+    const validMimetype = SPREADSHEET_MIME_TYPES.includes(file.mimetype);
+
+    if (!validExtension || !validMimetype) {
+      return cb(new Error('csv_file must be a .csv or .xlsx file'));
+    }
+
+    const maxSize = MAX_FILE_SIZES[file.fieldname];
+    if (file.size > maxSize) {
+      return cb(new Error(`${file.fieldname} exceeds the size limit of ${maxSize / (1024 * 1024)}MB`));
+    }
+
+    return cb(null, true);
+  }
+
+  // All other fields must be images
   if (!IMAGE_MIME_TYPES.includes(file.mimetype)) {
     const allowedFormats = IMAGE_MIME_TYPES.map((type) => type?.split('/')[1]).join(', ');
     return cb(new Error(`${file.fieldname} must be an image file: ${allowedFormats}`));
   }
 
-  if (file.fieldname === 'csv_file') {
-    if (file.mimetype !== 'text/csv') {
-      return cb(new Error(`csv_file must be a CSV file`));
-    }
-  }
-
-  // Per-file size validation
   const maxSize = MAX_FILE_SIZES[file.fieldname];
   if (file.size > maxSize) {
     return cb(new Error(`${file.fieldname} exceeds the size limit of ${maxSize / (1024 * 1024)}MB`));

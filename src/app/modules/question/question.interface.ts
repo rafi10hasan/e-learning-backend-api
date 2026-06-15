@@ -30,7 +30,6 @@ export interface IQuestion extends Document {
     options: IOption[];
     correctOptionIndex: number;
     explanation?: string;
-    difficultyLevel: TQuestionDifficulty;
     status: TQuestionStatus;
     testIds: Types.ObjectId[];
     isActive: boolean;

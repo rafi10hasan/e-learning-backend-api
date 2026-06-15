@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import { ACCESS_TYPES, EXAM_TYPES} from "../../../interfaces";
-import { QUERSTION_DIFFICULTY, QUERSTION_STATUS } from "./question.constant";
+import { QUERSTION_STATUS } from "./question.constant";
 import { IOption, IQuestion } from "./question.interface";
 
 
@@ -32,11 +32,6 @@ const QuestionSchema = new Schema<IQuestion>(
         options: { type: [OptionSchema], required: true,  _id: false },
         correctOptionIndex: { type: Number, required: true },
         explanation: { type: String , default: null },
-        difficultyLevel: {
-            type: String,
-            enum: Object.values(QUERSTION_DIFFICULTY),
-            default: QUERSTION_DIFFICULTY.EASY,
-        },
         testIds: [{ type: Schema.Types.ObjectId, ref: "Test" , default:  [] }],
         status: {
             type: String,
