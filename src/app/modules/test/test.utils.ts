@@ -256,7 +256,7 @@ export const getPaginatedTestsByType = async (
     if (input.examType) {
         query.examType = input.examType;
     }
-
+     
 
     if (input.examType === EXAM_TYPES.ENTRANCE_EXAM && input.faculty) {
         const facultyDoc = await Faculty.findOne({
@@ -278,7 +278,7 @@ export const getPaginatedTestsByType = async (
         })
             .select("_id")
             .lean();
-
+        console.log({foundDepartments})
         const departmentIds = foundDepartments.map((d) => d._id);
 
         // Kono department match na korle empty result return koro

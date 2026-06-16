@@ -3,12 +3,172 @@ import { Types } from "mongoose";
 import { BadRequestError, NotFoundError } from "../../errors/request/apiError";
 import Question from "../question/question.model";
 import Subscription from "../subscription/subscription.model";
+import Test from "../test/test.model";
 import { IUser } from "../user/user.interface";
 import { QUIZ_STATUS } from "./quiz.session.constant";
 import { QuizSession } from "./quiz.session.model";
-import { getRemaining, sortWithPassage, splitCountBySubject } from "./quiz.session.utils";
+import { getRemaining, shuffle, sortWithPassage, splitCountBySubject } from "./quiz.session.utils";
 import { TQuizSessionPayload } from "./quiz.session.zod";
 
+
+
+const getQuizzes = async (user: IUser, query: Record<string, unknown>) => {
+  const { page, limit } = query;
+
+  const pageNumber = parseInt(page as string) || 1;
+  const limitNumber = parseInt(limit as string) || 10;
+  const skip = (pageNumber - 1) * limitNumber;
+
+
+  const [quizzes, totalQuizzes] = await Promise.all([
+    Test.find({ examType: user.plan })
+      .select("title totalQuestions subjects departments")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNumber),
+    Test.countDocuments({ examType: user.plan })
+  ]);
+
+  const totalPages = Math.ceil(totalQuizzes / limitNumber);
+
+  return {
+    meta: {
+      page: pageNumber,
+      limit: limitNumber,
+      total: totalQuizzes,
+      totalPages: totalPages
+    },
+    data: quizzes
+  };
+}
+
+// start full simulation quiz
+
+const startFullSimulationQuiz = async (user: IUser, testId:string) => {
+
+  // একটাই in_progress session থাকতে পারবে
+  const existing = await QuizSession.findOne({
+    user: user._id,
+    status: QUIZ_STATUS.IN_PROGRESS,
+  });
+  if (existing) {
+    throw new BadRequestError(
+      "You already have an active quiz session. Please complete or wait for it to expire."
+    );
+  }
+
+  // ── Subscription check ──
+  const now = new Date();
+  const subscription = await Subscription.findOne({
+    user: user._id,
+    status: "active",
+    endDate: { $gt: now },
+  });
+  const isPremium = !!subscription;
+
+  // ── Test khuje validate koro ──
+  const test = await Test.findOne({
+    _id: new Types.ObjectId(testId),
+    isActive: true,
+  }).lean();
+
+  if (!test) {
+    throw new NotFoundError("Test not found.");
+  }
+
+  if (!isPremium && test.access === "premium") {
+    throw new BadRequestError("This test requires a premium subscription.");
+  }
+
+  // ── Test-er testIds array e current test._id ase emon question khujo ──
+ const questions = await Question.find({
+    testIds: test._id,
+    status: "published",
+    isActive: true,
+  })
+    .select("_id subject passage order")
+    .lean();
+
+  if (questions.length === 0) {
+    throw new NotFoundError("No active questions available for this test.");
+  }
+
+  // ── Shuffle koro (Fisher-Yates) ──
+  const shuffled = shuffle(questions);
+
+  // passage questions thakle serial wise sort koro
+  const sorted = sortWithPassage(shuffled);
+
+  const questionIds = sorted.map((q) => q._id);
+  const totalQuestions = questionIds.length;
+  const durationSeconds = totalQuestions * 60; // 1 min per question
+  const startedAt = new Date();
+
+  // ── questionSubjectMap ──
+  const questionSubjectMap = sorted.map((q) => ({
+    questionId: q._id,
+    subjectId: q.subject,
+  }));
+
+  // ── passageQuestionMap ──
+  const passageGroupMap = new Map
+    <string,
+      { questionIds: Types.ObjectId[]; start: number; end: number }
+    >();
+
+  sorted.forEach((q, idx) => {
+    if (q.passage) {
+      const key = q.passage.toString();
+      const position = idx + 1; // 1-based
+
+      if (!passageGroupMap.has(key)) {
+        passageGroupMap.set(key, {
+          questionIds: [],
+          start: position,
+          end: position,
+        });
+      }
+
+      const entry = passageGroupMap.get(key)!;
+      entry.questionIds.push(q._id);
+      entry.end = position;
+    }
+  });
+
+  const passageQuestionMap = [...passageGroupMap.entries()].map(
+    ([passageId, data]) => ({
+      passageId: new Types.ObjectId(passageId),
+      questionIds: data.questionIds,
+      start: data.start,
+      end: data.end,
+    })
+  );
+
+  const session = await QuizSession.create({
+    user: user._id,
+    examType: user.plan,
+    questionIds,
+    totalQuestions,
+    durationSeconds,
+    correctCount: 0,
+    incorrectCount: 0,
+    currentIndex: 0,
+    markedQuestionIds: [],
+    questionSubjectMap,
+    passageQuestionMap,
+    status: QUIZ_STATUS.IN_PROGRESS,
+    startedAt,
+  });
+
+  return {
+    sessionId: session._id,
+    totalQuestions,
+    durationSeconds,
+    remainingSeconds: durationSeconds,
+    currentIndex: 0,
+    currentQuestionId: questionIds[0],
+  };
+};
 
 
 // start quiz session
@@ -55,14 +215,14 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
   // ── Subject-wise split: 50q, 3 subjects → [17, 17, 16] ──
   const counts = splitCountBySubject(questionCount, subjectIds.length);
 
-  // base filter — সব subjects-এর জন্য shared
+  // base filter —
   const baseFilter: Record<string, unknown> = {
     examType: user.plan,
     status: "published",
     isActive: true,
   };
 
-  // premium না থাকলে শুধু free questions
+  // if premium has not free questions
   if (!isPremium) baseFilter.access = "free";
   if (year) baseFilter.year = Number(year);
   if (facultyId) baseFilter.faculty = new Types.ObjectId(facultyId);
@@ -72,7 +232,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
     };
   }
 
-  // ── প্রতিটা subject-এর জন্য আলাদা query ──
+  // ── every subject different query ──
   const allQuestions: {
     _id: Types.ObjectId;
     subject: Types.ObjectId;
@@ -84,7 +244,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
     const subjectId = new Types.ObjectId(subjectIds[i]);
     const neededCount = counts[i];
 
-    // প্রথমে seen বাদ দিয়ে চেষ্টা
+    // firstly try to fetch left seen 
     let qs = await Question.aggregate([
       {
         $match: {
@@ -97,7 +257,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
       { $project: { _id: 1, subject: 1, passage: 1, order: 1 } },
     ]);
 
-    // pool শেষ হলে — seen reset, full pool থেকে নাও
+    // pool end — seen reset, take question full pool
     if (qs.length < neededCount) {
       qs = await Question.aggregate([
         {
@@ -160,8 +320,8 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
     ([passageId, data]) => ({
       passageId: new Types.ObjectId(passageId),
       questionIds: data.questionIds,
-      start: data.start,   
-      end: data.end,     
+      start: data.start,
+      end: data.end,
     })
   );
 
@@ -368,7 +528,6 @@ const getSessionStatus = async (sessionId: string, userId: Types.ObjectId) => {
 }
 
 // get quiz map 
-
 const getQuizMap = async (sessionId: string, userId: Types.ObjectId) => {
   const session = await QuizSession.findOne({
     _id: new Types.ObjectId(sessionId),
@@ -416,7 +575,6 @@ const getQuizMap = async (sessionId: string, userId: Types.ObjectId) => {
 }
 
 // get quiz summary
-
 const getQuizSummary = async (
   sessionId: string,
   userId: Types.ObjectId
@@ -449,4 +607,6 @@ export const quizSessionService = {
   getSessionStatus,
   getQuizMap,
   getQuizSummary,
+  getQuizzes,
+  startFullSimulationQuiz,
 };

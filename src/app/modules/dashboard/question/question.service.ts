@@ -11,13 +11,13 @@ import { QuizSession } from "../../quiz-session/quiz.session.model";
 import Subject from "../../subject/subject.model";
 import Test from "../../test/test.model";
 import User from "../../user/user.model";
-import { dedupeRowsWithinFile, enforceAccessConsistency, ImportIssue, ImportValidationSummary, readTabularRows, resolveRowContexts, upsertTestAndQuestions, validateFileLevelRules, validateRowSchemas } from "./question.utils";
+import { dedupeRowsWithinFile, enforceAccessConsistency, normalizeImportRow, ImportIssue, ImportValidationSummary, readTabularRows, resolveRowContexts, upsertTestAndQuestions, validateFileLevelRules, validateRowSchemas } from "./question.utils";
 import { TCreatePassagePayload, TQuestionListInput, TTestListInput } from "./question.zod";
 
 
 
 
-
+// get question overview 
 const getQuestionOverview = async () => {
     const [
         totalQuestions,
@@ -506,7 +506,6 @@ const getQuestionById = async (id: string) => {
 
 
 // get all test archive
-
 const getAllTestArchive = async (input: TTestListInput) => {
     const page = Number(input.page) || 1;
     const limit = Number(input.limit) || 20;
@@ -705,7 +704,7 @@ const getAllTestArchive = async (input: TTestListInput) => {
     };
 };
 
-
+// create passage
 const createPassage = async (payload: TCreatePassagePayload
     , files: PassageFiles) => {
     // Create a passage record without linking questions here.
@@ -777,8 +776,7 @@ const getPassages = async (query: Record<string, unknown>) => {
     };
 };
 
-//
-
+// import question and test from csv
 const importTestsFromFile = async (
     fileBuffer: Buffer
 ): Promise<{
@@ -788,41 +786,33 @@ const importTestsFromFile = async (
 }> => {
     const issues: ImportIssue[] = [];
 
-    // 1. Parse the uploaded file into raw row objects.
     const rawRows = readTabularRows(fileBuffer);
 
     if (rawRows.length === 0) {
         return {
-            summary: {
-                totalRows: 0,
-                validRows: 0,
-                warnings: [],
-                errors: [{ row: 0, level: "error", message: "File is empty" }],
-            },
+            summary: { totalRows: 0, validRows: 0, warnings: [], errors: [{ row: 0, level: "error", message: "File is empty" }] },
         };
     }
 
-    // 2. Validate each row's shape with zod.
+    const allNormalizedRows = rawRows.map((rawRow, index) => ({
+        row: normalizeImportRow(rawRow),
+        rowNumber: index + 1,
+    }));
+
     const schemaValidRows = validateRowSchemas(rawRows, issues);
-
-    // 3. Validate file-level rules (examType consistency, testCode/testName, exam-type rules).
-    const fileLevelInfo = validateFileLevelRules(schemaValidRows, issues);
-
-    // 4. Drop duplicate questionText rows within this file (warning, not error).
+    const fileLevelInfo = validateFileLevelRules(allNormalizedRows, schemaValidRows, issues);
     const dedupedRows = dedupeRowsWithinFile(schemaValidRows, issues);
-
-    // 5. Resolve faculty/department/subject/passage references for each row.
     const resolvedRows = await resolveRowContexts(dedupedRows, issues);
 
     const totalRows = rawRows.length;
 
-    // Stop here (without touching the DB) if there are blocking errors,
-    // or file-level info could not be determined.
+    // ---- HERE: early-return when there are blocking errors ----
     if (issues.some((i) => i.level === "error") || !fileLevelInfo) {
+        const errorCount = issues.filter((i) => i.level === "error").length;
         return {
             summary: {
                 totalRows,
-                validRows: resolvedRows.length,
+                validRows: Math.max(0, resolvedRows.length - errorCount),
                 warnings: issues.filter((i) => i.level === "warning"),
                 errors: issues.filter((i) => i.level === "error"),
             },
@@ -831,9 +821,7 @@ const importTestsFromFile = async (
 
     const { testCode, testName, firstRow } = fileLevelInfo;
 
-    // 6. Write to the database inside a transaction.
     const result = await withTransaction(async (session) => {
-        // Enforce the free/premium duplicate rule against existing DB questions.
         const allowedRows = await enforceAccessConsistency(resolvedRows, issues, session);
 
         return upsertTestAndQuestions({
@@ -845,15 +833,20 @@ const importTestsFromFile = async (
         });
     });
 
+    // ---- HERE: success return ----
+    const errorCount = issues.filter((i) => i.level === "error").length;
     return {
         summary: {
             totalRows,
-            validRows: resolvedRows.length - issues.filter((i) => i.level === "error").length,
+            validRows: Math.max(0, resolvedRows.length - errorCount),
             warnings: issues.filter((i) => i.level === "warning"),
             errors: issues.filter((i) => i.level === "error"),
         },
-        test: result.test,
-        questions: result.questions,
+        test: {
+            _id: result.test && result.test._id,
+            title: result.test && result.test.title,
+            testCode: result.test && result.test.testCode,
+        },
     };
 };
 

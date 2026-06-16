@@ -6,6 +6,28 @@ import { BadRequestError } from "../../errors/request/apiError";
 import { quizSessionService } from "./quiz.session.service";
 
 
+const getQuizzes = asyncHandler(async (req: Request, res: Response) => {
+  const result = await quizSessionService.getQuizzes(req.user,req.query);
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Quiz fetched successfully.",
+    meta: result.meta,
+    data: result.data,
+  });
+});
+
+const startFullSimulationQuiz = asyncHandler(async (req: Request, res: Response) => {
+  const { testId } = req.params;
+  const result = await quizSessionService.startFullSimulationQuiz(req.user, testId as string);
+  sendResponse(res, {
+    statusCode: StatusCodes.CREATED,
+    success: true,
+    message: "Full simulation quiz started successfully.",
+    data: result,
+  });
+});
+
 const startQuiz = asyncHandler(async (req: Request, res: Response) => {
   const result = await quizSessionService.startQuiz(req.user, req.body);
   sendResponse(res, {
@@ -79,10 +101,12 @@ const getQuizMapIntodb = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const quizSessionController = {
+  getQuizzes,
   startQuiz,
   completeQuiz,
   getReviewQuiz,
   getSessionStatus,
+  startFullSimulationQuiz,
   getQuizMapIntodb,
   getQuizSummary
 }

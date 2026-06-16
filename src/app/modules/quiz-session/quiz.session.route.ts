@@ -8,6 +8,18 @@ import quizSessionValidationZodSchema from "./quiz.session.zod";
 
 const quizRouter = Router();
 
+quizRouter.get(
+  '/template',
+  authMiddleware(USER_ROLE.STUDENT),
+  quizSessionController.getQuizzes,
+);
+
+quizRouter.post(
+  '/start-full-simulation/:testId',
+  authMiddleware(USER_ROLE.STUDENT),
+  quizSessionController.startFullSimulationQuiz,
+);
+
 quizRouter.post(
   '/start',
   authMiddleware(USER_ROLE.STUDENT),

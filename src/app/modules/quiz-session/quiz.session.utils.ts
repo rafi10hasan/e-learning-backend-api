@@ -33,7 +33,7 @@ export function splitCountBySubject(total: number, subjectCount: number): number
 }
 
 export function sortWithPassage(
-  questions: { _id: Types.ObjectId; subject: Types.ObjectId; passage?: Types.ObjectId; order?: number }[]
+  questions:any[]
 ) {
   const withPassage = questions.filter((q) => q.passage);
   const withoutPassage = questions.filter((q) => !q.passage);

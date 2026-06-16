@@ -85,7 +85,8 @@ const importTestsFromCsvIntoDb = asyncHandler(async (req: Request, res: Response
     }
 
     const { summary, test, questions } = await dashboardQuestionService.importTestsFromFile(uploadedFile.buffer);
-
+     console.log("Import Summary:", summary); // Log the summary for debugging
+     console.log("Import Summary:", test, !test); // Log the summary for debugging
     if (summary.errors.length > 0 || !test) {
         return sendResponse(res, {
             statusCode: StatusCodes.OK,

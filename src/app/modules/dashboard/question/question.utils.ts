@@ -2,13 +2,13 @@ import mongoose, { Types } from "mongoose";
 import * as XLSX from "xlsx";
 import { EXAM_TYPES, TAccessTypes } from "../../../../interfaces";
 import { BadRequestError } from "../../../errors/request/apiError";
-import Test from "../../test/test.model";
-import Question from "../../question/question.model";
-import { importTestCsvRowSchema } from "./question.zod";
-import  Faculty  from "../../faculty/faculty.model";
 import Department from "../../department/department.model";
-import Subject  from "../../subject/subject.model";
-import Passage  from "../../passage/passage.model";
+import Faculty from "../../faculty/faculty.model";
+import Passage from "../../passage/passage.model";
+import Question from "../../question/question.model";
+import Subject from "../../subject/subject.model";
+import Test from "../../test/test.model";
+import { importTestCsvRowSchema } from "./question.zod";
 
 // export type NormalizedImportRow = {
 //     testCode: string;
@@ -445,7 +445,6 @@ export const normalizeImportRow = (row: Record<string, unknown>): NormalizedImpo
             .filter((option): option is { text: string; imageUrl: string | undefined } => option !== null),
         correctOptionIndex: Number(getRowValue(row, "correctoptionindex") ?? 0),
         explanation: getRowValue(row, "explanation"),
-        difficultyLevel: getRowValue(row, "difficultylevel"),
         status: getRowValue(row, "status"),
         faculty: getRowValue(row, "faculty"),
         departments: getRowValuesByPrefix(row, "department"),
@@ -503,28 +502,21 @@ export const validateRowSchemas = (
  * or null if a blocking error prevents the import from proceeding.
  */
 export const validateFileLevelRules = (
-    rows: { row: NormalizedImportRow; rowNumber: number }[],
+    allRows: { row: NormalizedImportRow; rowNumber: number }[],
+    schemaValidRows: { row: NormalizedImportRow; rowNumber: number }[],
     issues: ImportIssue[]
 ): { testCode: string; testName: string; firstRow: NormalizedImportRow } | null => {
-    if (rows.length === 0) {
-        issues.push({ row: 0, level: "error", message: "No valid rows found in file" });
+    if (allRows.length === 0) {
+        issues.push({ row: 0, level: "error", message: "No rows found in file" });
         return null;
     }
 
-    const firstRow = rows[0].row;
-
-    // All rows must share the same examType.
-    const uniqueExamTypes = new Set(rows.map(({ row }) => row.examType));
-    if (uniqueExamTypes.size !== 1) {
-        issues.push({ row: 0, level: "error", message: "All rows must have the same examType" });
-    }
-
-    // testCode must be present and consistent across rows.
-    const testCode = rows.find(({ row }) => row.testCode.trim().length > 0)?.row.testCode.trim();
+    // --- testCode: search across ALL normalized rows ---
+    const testCode = allRows.find(({ row }) => row.testCode.trim().length > 0)?.row.testCode.trim();
     if (!testCode) {
         issues.push({ row: 0, level: "error", message: "testCode is required in at least one row" });
     } else {
-        const mismatched = rows.find(
+        const mismatched = allRows.find(
             ({ row }) => row.testCode.trim().length > 0 && row.testCode.trim() !== testCode
         );
         if (mismatched) {
@@ -532,12 +524,12 @@ export const validateFileLevelRules = (
         }
     }
 
-    // testName must be present and consistent across rows.
-    const testName = rows.find(({ row }) => row.testName.trim().length > 0)?.row.testName.trim();
+    // --- testName: same as testCode ---
+    const testName = allRows.find(({ row }) => row.testName.trim().length > 0)?.row.testName.trim();
     if (!testName) {
         issues.push({ row: 0, level: "error", message: "testName is required in at least one row" });
     } else {
-        const mismatched = rows.find(
+        const mismatched = allRows.find(
             ({ row }) => row.testName.trim().length > 0 && row.testName.trim() !== testName
         );
         if (mismatched) {
@@ -545,19 +537,98 @@ export const validateFileLevelRules = (
         }
     }
 
-    // Exam-type-specific structural rules.
-    if (firstRow.examType === EXAM_TYPES.ENTRANCE_EXAM) {
-        validateEntranceExamFileRules(rows, issues);
-    } else {
-        validateMaturaFileRules(rows, issues);
+    // --- examType: every row must match the FIRST row's examType. ---
+    // Report every mismatched row individually (not just a single generic error).
+    const expectedExamType = allRows[0].row.examType;
+    for (const { row, rowNumber } of allRows) {
+        if (row.examType !== expectedExamType) {
+            issues.push({
+                row: rowNumber,
+                level: "error",
+                message: `examType "${row.examType}" does not match the file's examType "${expectedExamType}". All rows must use the same examType.`,
+            });
+        }
+    }
+
+    // --- access: every row must match the FIRST row's access ---
+    const expectedAccess = allRows[0].row.access;
+    for (const { row, rowNumber } of allRows) {
+        if (row.access && row.access !== expectedAccess) {
+            issues.push({
+                row: rowNumber,
+                level: "error",
+                message: `access "${row.access}" does not match the file's access "${expectedAccess}". All rows must use the same access level.`,
+            });
+        }
+    }
+
+    // --- testType: every row must match the FIRST row's testType ---
+    const expectedTestType = allRows[0].row.testType;
+    for (const { row, rowNumber } of allRows) {
+        if (row.testType && row.testType !== expectedTestType) {
+            issues.push({
+                row: rowNumber,
+                level: "error",
+                message: `testType "${row.testType}" does not match the file's testType "${expectedTestType}". All rows must use the same testType.`,
+            });
+        }
+    }
+
+    // --- exam-type-specific structural rules, applied PER ROW based on that row's own examType ---
+    for (const entry of schemaValidRows) {
+        if (entry.row.examType === EXAM_TYPES.ENTRANCE_EXAM) {
+            validateEntranceExamRow(entry, issues);
+        } else {
+            validateMaturaRow(entry, issues);
+        }
     }
 
     if (issues.some((issue) => issue.level === "error") || !testCode || !testName) {
         return null;
     }
 
+    const firstRow = schemaValidRows[0]?.row;
+    if (!firstRow) return null;
+
     return { testCode, testName, firstRow };
 };
+
+
+const validateEntranceExamRow = (
+    entry: { row: NormalizedImportRow; rowNumber: number },
+    issues: ImportIssue[]
+) => {
+    const { row, rowNumber } = entry;
+
+    if (!row.faculty || row.faculty.trim().length === 0) {
+        issues.push({ row: rowNumber, level: "error", message: "faculty is required for entrance exam rows" });
+    }
+
+    if (!row.departments || row.departments.length === 0) {
+        issues.push({ row: rowNumber, level: "error", message: "At least one department is required for entrance exam rows" });
+    }
+};
+
+// Matura / semi_matura row: must have subject; faculty/departments not allowed.
+const validateMaturaRow = (
+    entry: { row: NormalizedImportRow; rowNumber: number },
+    issues: ImportIssue[]
+) => {
+    const { row, rowNumber } = entry;
+
+    if ((row.subject ?? "").trim().length === 0) {
+        issues.push({ row: rowNumber, level: "error", message: "subject is required for matura/semi_matura rows" });
+    }
+
+    if ((row.faculty ?? "").trim().length > 0) {
+        issues.push({ row: rowNumber, level: "error", message: "faculty is not allowed for matura/semi_matura rows" });
+    }
+
+    if (row.departments && row.departments.length > 0) {
+        issues.push({ row: rowNumber, level: "error", message: "departments are not allowed for matura/semi_matura rows" });
+    }
+};
+
 
 // Entrance exam: a single shared faculty across all rows, and at least one department per row.
 export const validateEntranceExamFileRules = (
@@ -677,9 +748,9 @@ export const buildEntranceExamContext = async (
     for (const department of row.departments ?? []) {
         const departmentId = facultyId
             ? await resolveDocumentId(Department, department, {
-                  faculty: facultyId,
-                  examType: EXAM_TYPES.ENTRANCE_EXAM,
-              })
+                faculty: facultyId,
+                examType: EXAM_TYPES.ENTRANCE_EXAM,
+            })
             : null;
 
         if (!departmentId) {
@@ -927,15 +998,15 @@ export const upsertTestAndQuestions = async ({
             testIds: [createdTest._id],
             ...(row.examType === EXAM_TYPES.ENTRANCE_EXAM
                 ? {
-                      faculty: context.faculty,
-                      departments: context.departments,
-                      subject: context.subject,
-                      passage: context.passage,
-                  }
+                    faculty: context.faculty,
+                    departments: context.departments,
+                    subject: context.subject,
+                    passage: context.passage,
+                }
                 : {
-                      subject: context.subject,
-                      passage: context.passage,
-                  }),
+                    subject: context.subject,
+                    passage: context.passage,
+                }),
         })),
         { session }
     );
