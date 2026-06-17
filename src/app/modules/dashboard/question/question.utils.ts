@@ -239,6 +239,7 @@ export type NormalizedImportRow = {
     access: TAccessTypes;
     questionText: string;
     questionImageUrl?: string;
+    isMandatory?: boolean;
     options: { text: string; imageUrl?: string }[];
     correctOptionIndex: number;
     explanation?: string;
@@ -350,6 +351,16 @@ export const getRowValue = (
     return undefined;
 };
 
+
+const parseBooleanCell = (value: string | undefined): boolean | undefined => {
+    if (value === undefined) return undefined;
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "") return undefined;
+    if (["true", "1", "yes", "y"].includes(normalized)) return true;
+    if (["false", "0", "no", "n"].includes(normalized)) return false;
+    return undefined;
+};
+
 /**
  * Collect repeated columns like department[0], department[1], department[2]
  * into a deduplicated array of non-empty values.
@@ -446,6 +457,7 @@ export const normalizeImportRow = (row: Record<string, unknown>): NormalizedImpo
         correctOptionIndex: Number(getRowValue(row, "correctoptionindex") ?? 0),
         explanation: getRowValue(row, "explanation"),
         status: getRowValue(row, "status"),
+        isMandatory: parseBooleanCell(getRowValue(row, "ismandatory")),
         faculty: getRowValue(row, "faculty"),
         departments: getRowValuesByPrefix(row, "department"),
         subject: getRowValue(row, "subject"),
@@ -550,6 +562,21 @@ export const validateFileLevelRules = (
         }
     }
 
+    if (expectedExamType === EXAM_TYPES.MATURA) {
+        const someDeclared = allRows.some(({ row }) => row.isMandatory !== undefined);
+        if (someDeclared) {
+            for (const { row, rowNumber } of allRows) {
+                if (row.isMandatory === undefined) {
+                    issues.push({
+                        row: rowNumber,
+                        level: "error",
+                        message: "isMandatory must be set on every row once any row in this file declares it",
+                    });
+                }
+            }
+        }
+    }
+
     // --- access: every row must match the FIRST row's access ---
     const expectedAccess = allRows[0].row.access;
     for (const { row, rowNumber } of allRows) {
@@ -593,6 +620,28 @@ export const validateFileLevelRules = (
     return { testCode, testName, firstRow };
 };
 
+// derived subjects
+
+const deriveSubjectGroups = (rows: ValidatedRow[]) => {
+    const mandatorySubjectIds = new Set<string>();
+    const electiveSubjectIds = new Set<string>();
+
+    for (const { row, context } of rows) {
+        const subjectId = context.subject?.toString();
+        if (!subjectId) continue;
+
+        if (row.isMandatory === true) {
+            mandatorySubjectIds.add(subjectId);
+        } else if (row.isMandatory === false) {
+            electiveSubjectIds.add(subjectId);
+        }
+    }
+
+    return {
+        mandatorySubjects: [...mandatorySubjectIds].map((id) => new Types.ObjectId(id)),
+        electiveSubjects: [...electiveSubjectIds].map((id) => new Types.ObjectId(id)),
+    };
+};
 
 const validateEntranceExamRow = (
     entry: { row: NormalizedImportRow; rowNumber: number },
@@ -931,6 +980,8 @@ export const upsertTestAndQuestions = async ({
         (id) => new Types.ObjectId(id as string)
     );
 
+    const { mandatorySubjects, electiveSubjects } = deriveSubjectGroups(rows);
+
     const createdTest =
         existingTest ??
         (
@@ -944,6 +995,8 @@ export const upsertTestAndQuestions = async ({
                         subjects: uniqueSubjectIds,
                         testType: firstRow.testType,
                         access: firstRow.access,
+                        mandatorySubjects,
+                        electiveSubjects,
                         totalQuestions: 0,
                         ...toMongooseRefs(rows[0]?.context ?? {}),
                     },
@@ -995,6 +1048,7 @@ export const upsertTestAndQuestions = async ({
             explanation: row.explanation,
             difficultyLevel: row.difficultyLevel,
             status: row.status,
+            isMandatory: row.isMandatory,
             testIds: [createdTest._id],
             ...(row.examType === EXAM_TYPES.ENTRANCE_EXAM
                 ? {
@@ -1024,7 +1078,8 @@ export const upsertTestAndQuestions = async ({
         toLinkExistingIds.length > 0 ? await Question.find({ _id: { $in: toLinkExistingIds } }).session(session) : [];
 
     const totalAdded = newQuestionDocs.length + newlyLinkedExisting.length;
-
+    const mergedMandatory = [...new Set([...(existingTest?.mandatorySubjects ?? []).map((id: any) => id.toString()), ...mandatorySubjects.map((id) => id.toString())])].map((id) => new Types.ObjectId(id));
+    const mergedElective = [...new Set([...(existingTest?.electiveSubjects ?? []).map((id: any) => id.toString()), ...electiveSubjects.map((id) => id.toString())])].map((id) => new Types.ObjectId(id));
     await Test.findByIdAndUpdate(
         createdTest._id,
         {
@@ -1035,6 +1090,8 @@ export const upsertTestAndQuestions = async ({
                 year: firstRow.year,
                 testType: firstRow.testType,
                 access: firstRow.access,
+                mandatorySubjects: mergedMandatory,
+                electiveSubjects: mergedElective,
                 ...(toMongooseRefs(rows[0]?.context ?? {})),
             },
             $inc: { totalQuestions: totalAdded },

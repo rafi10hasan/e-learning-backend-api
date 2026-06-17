@@ -27,6 +27,7 @@ export interface IQuestion extends Document {
     questionText: string;
     access: TAccessTypes;
     questionImageUrl?: string;
+    isMandatory?: boolean;
     options: IOption[];
     correctOptionIndex: number;
     explanation?: string;

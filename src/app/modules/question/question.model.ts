@@ -30,6 +30,7 @@ const QuestionSchema = new Schema<IQuestion>(
         questionText: { type: String, required: true },
         questionImageUrl: { type: String , default: null },
         options: { type: [OptionSchema], required: true,  _id: false },
+        isMandatory: { type: Boolean, default: false },
         correctOptionIndex: { type: Number, required: true },
         explanation: { type: String , default: null },
         testIds: [{ type: Schema.Types.ObjectId, ref: "Test" , default:  [] }],

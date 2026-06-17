@@ -14,6 +14,8 @@ export interface ITest extends Document {
     departments: Types.ObjectId[];
     subjects: Types.ObjectId[];
     questionIds: Types.ObjectId[];
+    electiveSubjects?: Types.ObjectId[]; 
+    mandatorySubjects?: Types.ObjectId[]; 
     status: TTestStatus;
     totalQuestions: number;
     totalSubjects?: number;
