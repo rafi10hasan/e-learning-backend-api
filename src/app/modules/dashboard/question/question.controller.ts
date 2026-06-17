@@ -26,7 +26,7 @@ const getAllQuestions = asyncHandler(async (req: Request, res: Response) => {
         success: true,
         message: "Questions retrieved successfully.",
         meta: result.meta,
-        data: result.data,
+        data: result.questions,
     });
 });
 

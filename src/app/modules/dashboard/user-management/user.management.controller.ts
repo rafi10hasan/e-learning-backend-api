@@ -5,7 +5,6 @@ import { StatusCodes } from "http-status-codes";
 import { userManagementService } from "./user.management.service";
 
 
-
 const getUserStatsIntoDb = asyncHandler(async (req: Request, res: Response) => {
     const result = await userManagementService.getUserStats();
     sendResponse(res, {
