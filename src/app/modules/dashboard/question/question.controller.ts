@@ -25,7 +25,8 @@ const getAllQuestions = asyncHandler(async (req: Request, res: Response) => {
         statusCode: StatusCodes.OK,
         success: true,
         message: "Questions retrieved successfully.",
-        data: result,
+        meta: result.meta,
+        data: result.data,
     });
 });
 
@@ -45,7 +46,8 @@ const getAllTestArchiveIntoDashboard = asyncHandler(async (req: Request, res: Re
         statusCode: StatusCodes.OK,
         success: true,
         message: "Test archive retrieved successfully.",
-        data: result,
+        meta: result.meta,
+        data: result.data,
     });
 });
 
