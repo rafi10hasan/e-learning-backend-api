@@ -76,6 +76,7 @@ const startFullSimulationQuiz = async (user: IUser, testId:string) => {
     throw new NotFoundError("Test not found.");
   }
 
+
   if (!isPremium && test.access === "premium") {
     throw new BadRequestError("This test requires a premium subscription.");
   }

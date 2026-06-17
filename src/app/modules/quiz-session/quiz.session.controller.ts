@@ -38,7 +38,6 @@ const startQuiz = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
-
 const completeQuiz = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const result = await quizSessionService.completeQuiz(sessionId as string, req.user._id);
@@ -49,7 +48,6 @@ const completeQuiz = asyncHandler(async (req: Request, res: Response) => {
     data: result,
   });
 });
-
 
 const getQuizSummary = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
@@ -87,7 +85,6 @@ const getSessionStatus = asyncHandler(async (req: Request, res: Response) => {
     data: result,
   });
 });
-
 
 const getQuizMapIntodb = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;

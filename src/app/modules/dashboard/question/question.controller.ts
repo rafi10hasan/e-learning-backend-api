@@ -47,7 +47,7 @@ const getAllTestArchiveIntoDashboard = asyncHandler(async (req: Request, res: Re
         success: true,
         message: "Test archive retrieved successfully.",
         meta: result.meta,
-        data: result.data,
+        data: result.tests,
     });
 });
 
