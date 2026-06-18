@@ -18,13 +18,17 @@ export const quizSessionSchema = z.object({
     questionCount: z.coerce.number({ message: "Question count must be a number" }).int({ message: "Question count must be an integer" }).min(1, { message: "Question count must be at least 1" }),
 })
 
+const subjectsSchema = z.object({
+    subjects: z.array(z.string({ message: "Subject ID must be a string" })),
+})
 
 export type TQuizSessionPayload = z.infer<
     typeof quizSessionSchema
 >;
 
 const quizSessionValidationZodSchema = {
-    quizSessionSchema
+    quizSessionSchema,
+    subjectsSchema
 };
 
 export default quizSessionValidationZodSchema;

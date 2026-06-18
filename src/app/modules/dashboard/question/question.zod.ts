@@ -193,6 +193,7 @@ export const importTestCsvRowSchema = z.object({
   explanation: z.string({ message: "Explanation must be a string" }).optional(),
   status: z.enum([QUERSTION_STATUS.DRAFT, QUERSTION_STATUS.PUBLISHED], { message: "Invalid question status" }).default(QUERSTION_STATUS.PUBLISHED),
   faculty: z.string({ message: "Faculty is required for provime" }).optional(),
+  isMandatory: z.coerce.boolean({ message: "isMandatory must be a boolean" }).optional(),
   departments: z.array(z.string({ message: "Department must be a string" })).optional(),
   subject: z.string({ message: "Subject is required for semi_matura or matura" }).optional(),
   passage: z.string({ message: "Passage must be a string" }).optional(),

@@ -257,6 +257,7 @@ export type ResolvedRowContext = {
     faculty?: Types.ObjectId | null;
     departments?: Types.ObjectId[];
     passage?: Types.ObjectId | null;
+    
 };
 
 // One fully-validated row plus its resolved references, ready to be written to the DB.
@@ -264,6 +265,7 @@ export type ValidatedRow = {
     row: NormalizedImportRow;
     rowNumber: number; // 1-based row number in the source file, used in messages
     context: ResolvedRowContext;
+    isMandatory?: boolean;
 };
 
 export type ImportIssue = {
@@ -356,8 +358,8 @@ const parseBooleanCell = (value: string | undefined): boolean | undefined => {
     if (value === undefined) return undefined;
     const normalized = value.trim().toLowerCase();
     if (normalized === "") return undefined;
-    if (["true", "1", "yes", "y"].includes(normalized)) return true;
-    if (["false", "0", "no", "n"].includes(normalized)) return false;
+    if (["true", "1", "yes", "y", "TRUE"].includes(normalized)) return true;
+    if (["false", "0", "no", "n", "FALSE"].includes(normalized)) return false;
     return undefined;
 };
 
@@ -629,7 +631,8 @@ const deriveSubjectGroups = (rows: ValidatedRow[]) => {
     for (const { row, context } of rows) {
         const subjectId = context.subject?.toString();
         if (!subjectId) continue;
-
+      
+        
         if (row.isMandatory === true) {
             mandatorySubjectIds.add(subjectId);
         } else if (row.isMandatory === false) {
@@ -979,6 +982,7 @@ export const upsertTestAndQuestions = async ({
     const uniqueSubjectIds = [...new Set(rows.map(({ context }) => context.subject?.toString()).filter(Boolean))].map(
         (id) => new Types.ObjectId(id as string)
     );
+    console.log("rows",rows[0].isMandatory);
 
     const { mandatorySubjects, electiveSubjects } = deriveSubjectGroups(rows);
 

@@ -6,8 +6,8 @@ import { BadRequestError } from "../../errors/request/apiError";
 import { quizSessionService } from "./quiz.session.service";
 
 
-const getQuizzes = asyncHandler(async (req: Request, res: Response) => {
-  const result = await quizSessionService.getQuizzes(req.user,req.query);
+const getOfficialQuizzes = asyncHandler(async (req: Request, res: Response) => {
+  const result = await quizSessionService.getOfficialQuizzes(req.user,req.query);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -17,9 +17,33 @@ const getQuizzes = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
+const getAdditionalQuizzes = asyncHandler(async (req: Request, res: Response) => {
+  const result = await quizSessionService.getAdditionalQuizzes(req.user,req.query);
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Quiz fetched successfully.",
+    meta: result.meta,
+    data: result.data,
+  });
+});
+
+
+const getMandatorySubjects = asyncHandler(async (req: Request, res: Response) => {
+  const { testId } = req.params;
+  const result = await quizSessionService.getMandatorySubjects(req.user, testId as string);
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Mandatory subjects retrieved successfully.",
+    data: result,
+  });
+});
+
+
 const startFullSimulationQuiz = asyncHandler(async (req: Request, res: Response) => {
   const { testId } = req.params;
-  const result = await quizSessionService.startFullSimulationQuiz(req.user, testId as string);
+  const result = await quizSessionService.startFullSimulationQuiz(req.user, testId as string, req.body.subjects);
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,
@@ -98,12 +122,14 @@ const getQuizMapIntodb = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const quizSessionController = {
-  getQuizzes,
+  getOfficialQuizzes,
+  getAdditionalQuizzes,
   startQuiz,
   completeQuiz,
   getReviewQuiz,
   getSessionStatus,
   startFullSimulationQuiz,
   getQuizMapIntodb,
-  getQuizSummary
+  getQuizSummary,
+  getMandatorySubjects
 }

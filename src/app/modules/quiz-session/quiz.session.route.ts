@@ -9,14 +9,29 @@ import quizSessionValidationZodSchema from "./quiz.session.zod";
 const quizRouter = Router();
 
 quizRouter.get(
-  '/template',
+  '/official',
   authMiddleware(USER_ROLE.STUDENT),
-  quizSessionController.getQuizzes,
+  quizSessionController.getOfficialQuizzes,
+);
+
+quizRouter.get(
+  '/additional',
+  authMiddleware(USER_ROLE.STUDENT),
+  quizSessionController.getAdditionalQuizzes,
+);
+
+quizRouter.get(
+  '/subjects/:testId',
+  authMiddleware(USER_ROLE.STUDENT),
+  quizSessionController.getMandatorySubjects,
 );
 
 quizRouter.post(
   '/start-full-simulation/:testId',
   authMiddleware(USER_ROLE.STUDENT),
+  validateRequest({
+    body: quizSessionValidationZodSchema.subjectsSchema,
+  }),
   quizSessionController.startFullSimulationQuiz,
 );
 

@@ -12,7 +12,7 @@ import { TQuizSessionPayload } from "./quiz.session.zod";
 
 
 
-const getQuizzes = async (user: IUser, query: Record<string, unknown>) => {
+const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) => {
   const { page, limit } = query;
 
   const pageNumber = parseInt(page as string) || 1;
@@ -21,15 +21,60 @@ const getQuizzes = async (user: IUser, query: Record<string, unknown>) => {
 
 
   const [quizzes, totalQuizzes] = await Promise.all([
-    Test.find({ examType: user.plan })
+    Test.find({ examType: user.plan, testType: "official" })
       .select("title totalQuestions subjects departments")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNumber),
-    Test.countDocuments({ examType: user.plan })
+    Test.countDocuments({ examType: user.plan, testType: "official" })
   ]);
 
   const totalPages = Math.ceil(totalQuizzes / limitNumber);
+  const formattedQuizes = quizzes.map((quiz) => ({
+    _id: quiz._id,
+    title: quiz.title,
+    totalQuestions: quiz.totalQuestions,
+    totalSubjects: quiz.subjects.length,
+    totalDepartments: quiz.departments.length || undefined,
+  }));
+  return {
+    meta: {
+      page: pageNumber,
+      limit: limitNumber,
+      total: totalQuizzes,
+      totalPages: totalPages
+    },
+    data: formattedQuizes
+  };
+}
+
+
+// get additional quizzes
+const getAdditionalQuizzes = async (user: IUser, query: Record<string, unknown>) => {
+  const { page, limit } = query;
+
+  const pageNumber = parseInt(page as string) || 1;
+  const limitNumber = parseInt(limit as string) || 10;
+  const skip = (pageNumber - 1) * limitNumber;
+
+
+  const [quizzes, totalQuizzes] = await Promise.all([
+    Test.find({ examType: user.plan, testType: "additional" })
+      .select("title totalQuestions subjects departments")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNumber),
+    Test.countDocuments({ examType: user.plan, testType: "additional", isActive: true })
+  ]);
+
+  const totalPages = Math.ceil(totalQuizzes / limitNumber);
+  const formattedQuizes = quizzes.map((quiz) => ({
+    _id: quiz._id,
+    title: quiz.title,
+    totalQuestions: quiz.totalQuestions,
+    totalSubjects: quiz.subjects.length,
+    totalDepartments: quiz.departments.length || undefined,
+  }));
 
   return {
     meta: {
@@ -38,13 +83,29 @@ const getQuizzes = async (user: IUser, query: Record<string, unknown>) => {
       total: totalQuizzes,
       totalPages: totalPages
     },
-    data: quizzes
+    data: formattedQuizes
   };
 }
 
-// start full simulation quiz
+// get mandatory subjects
 
-const startFullSimulationQuiz = async (user: IUser, testId:string) => {
+const getMandatorySubjects = async (user: IUser, testId: string) => {
+  // Ekhane populate er por space diye shudhu darkari fields select kora hoyeche
+  const test = await Test.findById(testId)
+    .populate("mandatorySubjects", "name") // Ekhane mandatorySubjects theke 'name' r 'code' select hobe
+    .populate("electiveSubjects", "name")
+    .lean();
+
+  if (!test) throw new NotFoundError("Test not found.");
+
+  return {
+    mandatorySubjects: user.plan === 'matura' ? test.mandatorySubjects : [],
+    electiveSubjects: user.plan === 'matura' ? test.electiveSubjects : []
+  };
+};
+
+// start full simulation quiz
+const startFullSimulationQuiz = async (user: IUser, testId: string, subjects?: string[]) => {
 
   // একটাই in_progress session থাকতে পারবে
   const existing = await QuizSession.findOne({
@@ -82,14 +143,22 @@ const startFullSimulationQuiz = async (user: IUser, testId:string) => {
   }
 
   // ── Test-er testIds array e current test._id ase emon question khujo ──
- const questions = await Question.find({
+  const query: any = {
     testIds: test._id,
     status: "published",
     isActive: true,
-  })
+  };
+
+  // 2. Jodi subjects thake ebong tar moddhe elements thake, tokhon query-te add koro
+  if (subjects && subjects.length > 0) {
+    query.subject = { $in: subjects.map((id) => new Types.ObjectId(id)) };
+  }
+
+  // 3. Ebar query object-ti find() er moddhe pass kore dao
+  const questions = await Question.find(query)
     .select("_id subject passage order")
     .lean();
-
+    
   if (questions.length === 0) {
     throw new NotFoundError("No active questions available for this test.");
   }
@@ -607,7 +676,9 @@ export const quizSessionService = {
   getQuestionReview,
   getSessionStatus,
   getQuizMap,
+  getMandatorySubjects,
   getQuizSummary,
-  getQuizzes,
+  getOfficialQuizzes,
+  getAdditionalQuizzes,
   startFullSimulationQuiz,
 };
