@@ -152,6 +152,7 @@ const getUserProfile = async (user: IUser) => {
     city: user.city,
     avatar: user.avatar,
     plan: user.plan,
+    language: user.language,
     planStatus: user.subscription || null,
   };
 }
