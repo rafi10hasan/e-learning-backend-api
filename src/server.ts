@@ -5,6 +5,7 @@ import config from './config';
 
 import { connectSocket } from './socket/connectSocket';
 import seedingAdmin from './utilities/seeding';
+import { initializeQuizCrons } from './helpers/quizcron';
 
 let server: HTTPServer;
 
@@ -18,7 +19,7 @@ const runServer = async () => {
   await mongoose.connect(config.mongodb_url as string);
   console.log('\x1b[32mDatabase has been connected successfully\x1b[0m');
 
-
+   initializeQuizCrons();
 
   const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : config.base_url || 'localhost';
 

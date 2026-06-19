@@ -46,6 +46,7 @@ const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) =
     totalSubjects: quiz.subjects.length,
     totalDepartments: quiz.departments.length || undefined,
   }));
+
   return {
     meta: {
       page: pageNumber,
@@ -134,14 +135,14 @@ const getMandatorySubjects = async (user: IUser, testId: string) => {
 // start full simulation quiz
 const startFullSimulationQuiz = async (user: IUser, testId: string, subjects?: string[]) => {
 
-  // একটাই in_progress session থাকতে পারবে
-  const existing = await QuizSession.findOne({
+
+  const existing = await QuizSession.find({
     user: user._id,
     status: QUIZ_STATUS.IN_PROGRESS,
   });
-  if (existing) {
+  if (existing.length > 8) {
     throw new BadRequestError(
-      "You already have an active quiz session. Please complete or wait for it to expire."
+      "You already have many active quiz sessions. Please complete or wait for them to expire."
     );
   }
 
