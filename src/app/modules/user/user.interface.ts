@@ -1,5 +1,6 @@
 import { Document, Model, Types } from 'mongoose';
 import { TProvider, TUserRole, TUserStatus } from './user.constant';
+import { TUserLanguages } from '../../../interfaces';
 
 
 export type TProfileImage = {
@@ -26,14 +27,10 @@ export interface IUser extends Document {
     emailVerifiedAt: Date | null;
     phoneVerifiedAt: Date | null;
   };
-  passwordResetOtp?: string;
-  passwordResetExpiry?: Date;
-  isOtpVerified?: boolean;
   plan?: string;
   faculty?: string;
   subscription?: Types.ObjectId;
-  verificationOtp?: string;
-  verificationOtpExpiry?: Date;
+  language?: TUserLanguages;
   role: TUserRole;
   provider?: TProvider;
   isSocialLogin: boolean;

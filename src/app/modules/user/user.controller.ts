@@ -24,7 +24,6 @@ const createAccountIntoDb = asyncHandler(async (req: Request, res: Response) => 
 
 const updateUserProfile = asyncHandler(async (req: Request, res: Response) => {
   const result = await userService.updateUserProfile(req.user,req.body);
-  // console.log(result);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -33,6 +32,15 @@ const updateUserProfile = asyncHandler(async (req: Request, res: Response) => {
   });
 });
 
+const changeLanguageIntoDb = asyncHandler(async (req: Request, res: Response) => {
+  const result = await userService.updateUserLanguage(req.user, req.body.language);
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Language changed successfully',
+    data: result,
+  });
+});
 
 const updateUserProfileImage = asyncHandler(async (req: Request, res: Response) => {
   const result = await userService.updateUserProfileImage(req.user,req.files as TProfileImage);
@@ -85,6 +93,7 @@ export const userController = {
   choosePlanIntoDb,
   getUserPlanIntoDb,
   updateUserProfile,
+  changeLanguageIntoDb,
   updateUserProfileImage,
   getUserProfile,
 };

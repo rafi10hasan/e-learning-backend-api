@@ -8,6 +8,8 @@ const departmentSchema = new Schema<IDepartment>(
     {
         name: { type: String, required: true },
         faculty: { type: Schema.Types.ObjectId, ref: "Faculty", required: true },
+        nameInEnglish: { type: String, required: true },
+        nameInAlbanian: { type: String, required: true },
         examType: {
             type: String,
             default: EXAM_TYPES.ENTRANCE_EXAM

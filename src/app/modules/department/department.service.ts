@@ -1,8 +1,10 @@
 import slugify from "slugify";
 
 import mongoose from "mongoose";
+import { USER_LANGUAGES } from "../../../interfaces";
 import { BadRequestError } from "../../errors/request/apiError";
 import Faculty from "../faculty/faculty.model";
+import { IUser } from "../user/user.interface";
 import Department from "./department.model";
 import { TCreateDepartmentPayload } from "./department.zod";
 
@@ -42,13 +44,12 @@ const createDepartmentUnderFaculty = async (payload: TCreateDepartmentPayload, f
 };
 
 
-const getAllDepartmentByfaculty = async (faculty: string) => {
-    console.log(faculty)
+const getAllDepartmentByfaculty = async (user: IUser, faculty: string) => {
     const result = await Department.find({ facultyId: new mongoose.Types.ObjectId(faculty) });
-    console.log({ result })
+
     const formattedResult = result.map(department => ({
         departments: department._id,
-        name: department.name,
+        name: user.language === USER_LANGUAGES.ENGLISH ? department.nameInEnglish : department.nameInAlbanian,
         slug: department.slug,
         faculty: department.faculty,
     }));

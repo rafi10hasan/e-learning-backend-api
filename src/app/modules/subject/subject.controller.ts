@@ -33,9 +33,7 @@ const getAllSubjects = asyncHandler(async (req: Request, res: Response) => {
 
 const getSubjectsByType = asyncHandler(async (req: Request, res: Response) => {
 
-    const plan = req.user.plan as string;
-
-    const result = await subjectService.getSubjectsOrDepartmentsByExamType(plan as TExamTypes, req.user.faculty as string);
+    const result = await subjectService.getSubjectsOrDepartmentsByExamType(req.user);
 
     sendResponse(res, {
         statusCode: StatusCodes.OK,
@@ -51,7 +49,7 @@ const getSubjectsByDepartments = asyncHandler(async (req: Request, res: Response
     if (departments.length === 0) {
         throw new BadRequestError("At least one department must be selected.");
     }
-    const result = await subjectService.getSubjectsByDepartments(departments);
+    const result = await subjectService.getSubjectsByDepartments(req.user,departments);
 
     sendResponse(res, {
         statusCode: StatusCodes.OK,

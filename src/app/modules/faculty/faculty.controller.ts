@@ -20,7 +20,7 @@ const createFacultyIntodb = asyncHandler(async (req: Request, res: Response) => 
 
 
 const getAllFaculties = asyncHandler(async (req: Request, res: Response) => {
-    const result = await facultyService.getAllFaculties();
+    const result = await facultyService.getAllFaculties(req.user);
 
     sendResponse(res, {
         statusCode: StatusCodes.OK,

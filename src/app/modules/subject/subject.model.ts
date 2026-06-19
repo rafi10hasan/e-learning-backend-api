@@ -7,6 +7,8 @@ const subjectSchema = new Schema<ISubject>(
     {
         name: { type: String, required: true },
         slug: { type: String, required: true },
+        nameInEnglish: { type: String, required: true },
+        nameInAlbanian: { type: String, required: true },
         examType: {
             type: String,
             enum: Object.values(EXAM_TYPES),

@@ -7,7 +7,7 @@ import { sendVerificationOtp } from '../auth/auth.utils';
 import { USER_ROLE, USER_STATUS } from './user.constant';
 import { IUser, TProfileImage } from './user.interface';
 import User from './user.model';
-import { TRegistrationPayload, TUserProfileUpdatePayload } from './user.validations';
+import { TRegistrationPayload, TUserLanguagePayload, TUserProfileUpdatePayload } from './user.validations';
 
 // create account
 const createAccount = async (payload: TRegistrationPayload) => {
@@ -115,6 +115,18 @@ const updateUserProfileImage = async (user: IUser, files: TProfileImage) => {
   return { avatar: newProfileImageUrl };
 };
 
+const updateUserLanguage = async (user: IUser, payload: TUserLanguagePayload) => {
+
+  const result = await User.findByIdAndUpdate(
+    user._id,
+    { $set: { language: payload } },
+    { new: true }
+  );
+  return {
+    language: result?.language
+
+  };
+};
 
 const updateUserProfile = async (user: IUser, payload: TUserProfileUpdatePayload) => {
   console.log({ payload })
@@ -171,6 +183,7 @@ export const userService = {
   createAccount,
   choosePlan,
   getUserPlan,
+  updateUserLanguage,
   updateUserProfileImage,
   updateUserProfile,
   getUserProfile,

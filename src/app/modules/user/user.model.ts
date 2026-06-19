@@ -3,7 +3,7 @@ import mongoose, { Schema } from 'mongoose';
 import config from '../../../config';
 import { PROVIDER, USER_ROLE, USER_STATUS } from './user.constant';
 import { IUser, IUserModel } from './user.interface';
-import { EXAM_TYPES } from '../../../interfaces';
+import { EXAM_TYPES, USER_LANGUAGES } from '../../../interfaces';
 
 
 export const userSchema = new Schema<IUser>(
@@ -56,13 +56,18 @@ export const userSchema = new Schema<IUser>(
       enum: Object.values(EXAM_TYPES),
       required: false
     },
+    language: {
+      type: String,
+      enum: Object.values(USER_LANGUAGES),
+      default: USER_LANGUAGES.ENGLISH,
+    },
     status: {
       type: String,
       enum: Object.values(USER_STATUS),
       default: USER_STATUS.PENDING,
     },
     faculty: { type: String, default: null },
-    subscription:{
+    subscription: {
       type: Schema.Types.ObjectId,
       ref: 'Subscription',
       default: null
@@ -80,7 +85,7 @@ export const userSchema = new Schema<IUser>(
 );
 
 userSchema.pre('save', async function () {
-   const salt = await bcrypt.genSalt(Number(config.salt_rounds));
+  const salt = await bcrypt.genSalt(Number(config.salt_rounds));
   if (this.isModified('password')) {
     this.password = await bcrypt.hash(this.password, salt);
   }

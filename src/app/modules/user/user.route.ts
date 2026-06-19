@@ -41,6 +41,16 @@ userRouter.patch(
 );
 
 userRouter.patch(
+  '/update-language',
+  authMiddleware(USER_ROLE.STUDENT),
+  validateRequest({
+    body: userValidationZodSchema.updateUserLanguageSchema,
+  }),
+  userController.changeLanguageIntoDb
+);
+
+
+userRouter.patch(
   '/update-profile-image',
   authMiddleware(USER_ROLE.STUDENT),
   uploadFile(),

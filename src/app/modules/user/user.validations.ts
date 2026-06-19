@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { USER_LANGUAGES } from '../../../interfaces';
 
 
 const createAuthSchema = z.object({
@@ -105,6 +106,11 @@ const updateUserProfileSchema = z.object({
 
 });
 
+const updateUserLanguageSchema = z.object({
+ language: z.enum([USER_LANGUAGES.ENGLISH, USER_LANGUAGES.ALBANIAN], {
+    message: 'Invalid language selected! please select either english or albanian',
+  }),
+});
 
 const updateUserLocationSchema = z.object({
   address: z.string().max(100, 'Address cannot exceed 100 characters'),
@@ -119,8 +125,8 @@ const updateUserLocationSchema = z.object({
 
 
 
-export type TUserLocationPayload = z.infer<
-  typeof updateUserLocationSchema
+export type TUserLanguagePayload = z.infer<
+  typeof updateUserLanguageSchema
 >;
 
 export type TUserProfileUpdatePayload = z.infer<
@@ -134,7 +140,8 @@ const userValidationZodSchema = {
   createAuthSchema,
   createSocialAuthSchema,
   updateUserProfileSchema,
-  updateUserLocationSchema
+  updateUserLocationSchema,
+  updateUserLanguageSchema
 };
 
 export default userValidationZodSchema;
