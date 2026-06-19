@@ -7,6 +7,7 @@ import { quizSessionService } from "./quiz.session.service";
 
 
 const getOfficialQuizzes = asyncHandler(async (req: Request, res: Response) => {
+  console.log(req.query)
   const result = await quizSessionService.getOfficialQuizzes(req.user,req.query);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -28,6 +29,17 @@ const getAdditionalQuizzes = asyncHandler(async (req: Request, res: Response) =>
   });
 });
 
+
+
+const getYearRange = asyncHandler(async (req: Request, res: Response) => {
+  const result = await quizSessionService.getYearRange();
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Year range retrieved successfully.",
+    data: result,
+  });
+});
 
 const getMandatorySubjects = asyncHandler(async (req: Request, res: Response) => {
   const { testId } = req.params;
@@ -127,6 +139,7 @@ export const quizSessionController = {
   startQuiz,
   completeQuiz,
   getReviewQuiz,
+  getYearRange,
   getSessionStatus,
   startFullSimulationQuiz,
   getQuizMapIntodb,

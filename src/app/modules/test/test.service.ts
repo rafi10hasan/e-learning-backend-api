@@ -306,6 +306,13 @@ const getAllAdditionalTests = async (input: {
   return getPaginatedTestsByType(TEST_TYPES.ADDITIONAL, input);
 };
 
+const getYearRange = async () => {
+  const result = await Test.aggregate([
+    { $group: { _id: null, maxYear: { $max: "$year" }, minYear: { $min: "$year" } } }
+  ]);
+  return result[0] || { maxYear: null, minYear: null };
+};
+
 
 // get Question by test id with pagination and optional department filter
 const getQuestionsByTestId = async (
@@ -737,6 +744,7 @@ export const testService = {
   getTestWithQuestions,
   getLinkableQuestions,
   linkQuestions,
+  getYearRange,
   removeQuestion,
   reorderQuestions,
   publishTest,

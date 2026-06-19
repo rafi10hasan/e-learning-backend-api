@@ -13,20 +13,29 @@ import { TQuizSessionPayload } from "./quiz.session.zod";
 
 
 const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) => {
-  const { page, limit } = query;
-
+  const { page, limit, year } = query;
+  
   const pageNumber = parseInt(page as string) || 1;
   const limitNumber = parseInt(limit as string) || 10;
   const skip = (pageNumber - 1) * limitNumber;
 
+  const testQuery: any = {
+    examType: user.plan,
+    testType: "official",
+  };
+
+  // 2. Jodi subjects thake ebong tar moddhe elements thake, tokhon query-te add koro
+  if (year) {
+    testQuery.year = Number(year);
+  }
 
   const [quizzes, totalQuizzes] = await Promise.all([
-    Test.find({ examType: user.plan, testType: "official" })
+    Test.find(testQuery)
       .select("title totalQuestions subjects departments")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNumber),
-    Test.countDocuments({ examType: user.plan, testType: "official" })
+    Test.countDocuments(testQuery)
   ]);
 
   const totalPages = Math.ceil(totalQuizzes / limitNumber);
@@ -51,20 +60,29 @@ const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) =
 
 // get additional quizzes
 const getAdditionalQuizzes = async (user: IUser, query: Record<string, unknown>) => {
-  const { page, limit } = query;
+  const { page, limit, year } = query;
 
   const pageNumber = parseInt(page as string) || 1;
   const limitNumber = parseInt(limit as string) || 10;
   const skip = (pageNumber - 1) * limitNumber;
 
+  const testQuery: any = {
+    examType: user.plan,
+    testType: "additional",
+  };
+
+  // 2. Jodi subjects thake ebong tar moddhe elements thake, tokhon query-te add koro
+  if (year) {
+    testQuery.year = Number(year);
+  }
 
   const [quizzes, totalQuizzes] = await Promise.all([
-    Test.find({ examType: user.plan, testType: "additional" })
+    Test.find(testQuery)
       .select("title totalQuestions subjects departments")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNumber),
-    Test.countDocuments({ examType: user.plan, testType: "additional", isActive: true })
+    Test.countDocuments(testQuery)
   ]);
 
   const totalPages = Math.ceil(totalQuizzes / limitNumber);
@@ -86,6 +104,15 @@ const getAdditionalQuizzes = async (user: IUser, query: Record<string, unknown>)
     data: formattedQuizes
   };
 }
+
+// get max year and min year
+
+const getYearRange = async () => {
+  const result = await Test.aggregate([
+    { $group: { _id: null, maxYear: { $max: "$year" }, minYear: { $min: "$year" } } }
+  ]);
+  return result[0] || { maxYear: null, minYear: null };
+};
 
 // get mandatory subjects
 
@@ -158,7 +185,7 @@ const startFullSimulationQuiz = async (user: IUser, testId: string, subjects?: s
   const questions = await Question.find(query)
     .select("_id subject passage order")
     .lean();
-    
+
   if (questions.length === 0) {
     throw new NotFoundError("No active questions available for this test.");
   }
@@ -675,6 +702,7 @@ export const quizSessionService = {
   completeQuiz,
   getQuestionReview,
   getSessionStatus,
+  getYearRange,
   getQuizMap,
   getMandatorySubjects,
   getQuizSummary,

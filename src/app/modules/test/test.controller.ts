@@ -95,6 +95,17 @@ const getQuestionsByTestIdIntoDb = asyncHandler(async (req: Request, res: Respon
   });
 });
 
+
+const getYearRange = asyncHandler(async (req: Request, res: Response) => {
+  const result = await testService.getYearRange();
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: "Year range retrieved successfully.",
+    data: result,
+  });
+});
+
 const getTestById = asyncHandler(async (req: Request, res: Response) => {
   const result = await testService.getTestById(req.params.id as string);
   sendResponse(res, {
@@ -207,6 +218,7 @@ export const testController = {
   getTestWithQuestions,
   getLinkableQuestions,
   linkQuestions,
+  getYearRange,
   removeQuestion,
   reorderQuestions,
   publishTest,

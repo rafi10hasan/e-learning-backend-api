@@ -40,6 +40,12 @@ testRouter.get(
 );
 
 testRouter.get(
+  '/year-range',
+  authMiddleware(USER_ROLE.STUDENT),
+  testController.getYearRange,
+);
+
+testRouter.get(
     '/questions/:testId',
     authMiddleware(USER_ROLE.SUPER_ADMIN, USER_ROLE.ADMIN,USER_ROLE.STUDENT),
     testController.getQuestionsByTestIdIntoDb
