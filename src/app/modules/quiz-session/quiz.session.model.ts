@@ -1,5 +1,6 @@
 import { Schema, model } from "mongoose";
 import { IQuestionAttempt, IQuizSession } from "./quiz.session.interface";
+import { QUIZ_STATUS } from "./quiz.session.constant";
 
 
 const QuestionAttemptSchema = new Schema<IQuestionAttempt>(
@@ -108,8 +109,8 @@ const QuizSessionSchema = new Schema<IQuizSession>(
     },
     status: {
       type: String,
-      enum: ["in_progress", "completed"],
-      default: "in_progress",
+      enum: Object.values(QUIZ_STATUS),
+      default: QUIZ_STATUS.IN_PROGRESS,
     },
     reviewSeenAt: {
       type: Date,

@@ -135,7 +135,6 @@ const getMandatorySubjects = async (user: IUser, testId: string) => {
 // start full simulation quiz
 const startFullSimulationQuiz = async (user: IUser, testId: string, subjects?: string[]) => {
 
-
   const existing = await QuizSession.find({
     user: user._id,
     status: QUIZ_STATUS.IN_PROGRESS,

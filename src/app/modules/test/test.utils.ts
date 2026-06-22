@@ -310,7 +310,7 @@ export const getPaginatedTestsByType = async (
 
     const formattedTests = tests.map((test) => {
 
-        const testSubjectIds = test.subjects?.map(id => id.toString()) || [];
+    const testSubjectIds = test.subjects?.map(id => id.toString()) || [];
 
         return {
             testId: test._id,
