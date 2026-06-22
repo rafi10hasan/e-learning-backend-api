@@ -139,7 +139,7 @@ const startFullSimulationQuiz = async (user: IUser, testId: string, subjects?: s
     user: user._id,
     status: QUIZ_STATUS.IN_PROGRESS,
   });
-  if (existing.length > 8) {
+  if (existing.length > 3) {
     throw new BadRequestError(
       "You already have many active quiz sessions. Please complete or wait for them to expire."
     );
@@ -276,13 +276,14 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
   } = payload;
 
   // একটাই in_progress session থাকতে পারবে
-  const existing = await QuizSession.findOne({
+  const existing = await QuizSession.find({
     user: user._id,
     status: QUIZ_STATUS.IN_PROGRESS,
   });
-  if (existing) {
+  
+  if (existing.length > 3) {
     throw new BadRequestError(
-      "You already have an active quiz session. Please complete or wait for it to expire."
+      "You already have many active quiz sessions. Please complete or wait for them to expire."
     );
   }
 
