@@ -15,17 +15,8 @@ export const sendVerificationOtp = async (userId: Types.ObjectId, email: string)
     throw new InternalServerError('OTP expiry configuration is invalid.');
   }
 
-  // If OTP exists in DB, TTL guarantees it's still valid (expired ones are auto-deleted)
-  const existingOtp = await OtpToken.findOne({ userId, type: 'email_verification' });
-
-  if (existingOtp) {
-    throw new BadRequestError('OTP still valid. Please wait before requesting a new one.');
-  }
-
-  // Safety net — delete any stale OTP before creating new one
   await OtpToken.deleteOne({ userId, type: 'email_verification' });
 
-  // Use create so pre('save') hook fires and hashes the OTP automatically
   await OtpToken.create({
     userId,
     type: 'email_verification',
@@ -38,10 +29,9 @@ export const sendVerificationOtp = async (userId: Types.ObjectId, email: string)
       from: config.gmail_app_user,
       to: email,
       subject: 'Verification Code',
-      html: otpMailTemplate(otp, expiresInMinutes), // plain OTP sent to user
+      html: otpMailTemplate(otp, expiresInMinutes),
     });
   } catch {
-    // Mail failed — delete OTP so user can retry
     await OtpToken.deleteOne({ userId, type: 'email_verification' });
     throw new BadRequestError('Failed to send verification email. Try again.');
   }

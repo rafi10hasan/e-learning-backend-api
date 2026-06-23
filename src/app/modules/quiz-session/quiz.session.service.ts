@@ -9,12 +9,14 @@ import { QUIZ_STATUS } from "./quiz.session.constant";
 import { QuizSession } from "./quiz.session.model";
 import { getRemaining, shuffle, sortWithPassage, splitCountBySubject } from "./quiz.session.utils";
 import { TFullSimulationPayload, TQuizSessionPayload } from "./quiz.session.zod";
+import Department from "../department/department.model";
 
 
 
 const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) => {
   const { page, limit, departments } = query;
 
+  console.log({departments})
   const pageNumber = parseInt(page as string) || 1;
   const limitNumber = parseInt(limit as string) || 10;
   const skip = (pageNumber - 1) * limitNumber;
@@ -26,7 +28,9 @@ const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) =
 
   // 2. Jodi subjects thake ebong tar moddhe elements thake, tokhon query-te add koro
   if (departments) {
-    testQuery.departments = departments;
+    const departmentsId = await Department.findOne( { name: departments as string }).select("_id").lean();
+    console.log({departmentsId})
+    testQuery.departments = { $in: [departmentsId] };
   }
 
   const [quizzes, totalQuizzes] = await Promise.all([
