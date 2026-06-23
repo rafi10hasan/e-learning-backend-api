@@ -31,7 +31,7 @@ quizRouter.post(
   '/start-full-simulation/:testId',
   authMiddleware(USER_ROLE.STUDENT),
   validateRequest({
-    body: quizSessionValidationZodSchema.subjectsSchema,
+    body: quizSessionValidationZodSchema.fullSimulationSchema,
   }),
   quizSessionController.startFullSimulationQuiz,
 );

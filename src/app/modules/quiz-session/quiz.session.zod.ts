@@ -18,17 +18,29 @@ export const quizSessionSchema = z.object({
     questionCount: z.coerce.number({ message: "Question count must be a number" }).int({ message: "Question count must be an integer" }).min(1, { message: "Question count must be at least 1" }),
 })
 
-const subjectsSchema = z.object({
-    subjects: z.array(z.string({ message: "Subject ID must be a string" })),
-})
+const fullSimulationSchema = z.object({
+    subjects: z.array(z.string({ message: "Subject ID must be a string" })).optional(),
+    departments: z.array(z.string({ message: "Department ID must be a string" })).optional(),
+}).superRefine((data, ctx) => {
+    if (data.subjects?.length === 0 && data.departments?.length === 0) {
+        ctx.addIssue({
+            code: "custom",
+            message: "At least one subject must be selected",
+        });
+    }
+});
 
 export type TQuizSessionPayload = z.infer<
     typeof quizSessionSchema
 >;
 
+export type TFullSimulationPayload = z.infer<
+    typeof fullSimulationSchema
+>;
+
 const quizSessionValidationZodSchema = {
     quizSessionSchema,
-    subjectsSchema
+    fullSimulationSchema
 };
 
 export default quizSessionValidationZodSchema;

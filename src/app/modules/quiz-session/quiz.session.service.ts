@@ -8,13 +8,13 @@ import { IUser } from "../user/user.interface";
 import { QUIZ_STATUS } from "./quiz.session.constant";
 import { QuizSession } from "./quiz.session.model";
 import { getRemaining, shuffle, sortWithPassage, splitCountBySubject } from "./quiz.session.utils";
-import { TQuizSessionPayload } from "./quiz.session.zod";
+import { TFullSimulationPayload, TQuizSessionPayload } from "./quiz.session.zod";
 
 
 
 const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) => {
   const { page, limit, year } = query;
-  
+
   const pageNumber = parseInt(page as string) || 1;
   const limitNumber = parseInt(limit as string) || 10;
   const skip = (pageNumber - 1) * limitNumber;
@@ -133,7 +133,7 @@ const getMandatorySubjects = async (user: IUser, testId: string) => {
 };
 
 // start full simulation quiz
-const startFullSimulationQuiz = async (user: IUser, testId: string, subjects?: string[]) => {
+const startFullSimulationQuiz = async (user: IUser, testId: string, payload: TFullSimulationPayload) => {
 
   const existing = await QuizSession.find({
     user: user._id,
@@ -177,8 +177,12 @@ const startFullSimulationQuiz = async (user: IUser, testId: string, subjects?: s
   };
 
   // 2. Jodi subjects thake ebong tar moddhe elements thake, tokhon query-te add koro
-  if (subjects && subjects.length > 0) {
-    query.subject = { $in: subjects.map((id) => new Types.ObjectId(id)) };
+  if (payload.subjects && payload.subjects.length > 0) {
+    query.subject = { $in: payload.subjects.map((id) => new Types.ObjectId(id)) };
+  }
+
+  if (payload.departments && payload.departments.length > 0) {
+    query.departments = { $in: payload.departments.map((id) => new Types.ObjectId(id)) };
   }
 
   // 3. Ebar query object-ti find() er moddhe pass kore dao
@@ -280,7 +284,7 @@ const startQuiz = async (user: IUser, payload: TQuizSessionPayload) => {
     user: user._id,
     status: QUIZ_STATUS.IN_PROGRESS,
   });
-  
+
   if (existing.length > 3) {
     throw new BadRequestError(
       "You already have many active quiz sessions. Please complete or wait for them to expire."

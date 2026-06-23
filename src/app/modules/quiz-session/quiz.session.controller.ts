@@ -55,7 +55,7 @@ const getMandatorySubjects = asyncHandler(async (req: Request, res: Response) =>
 
 const startFullSimulationQuiz = asyncHandler(async (req: Request, res: Response) => {
   const { testId } = req.params;
-  const result = await quizSessionService.startFullSimulationQuiz(req.user, testId as string, req.body.subjects);
+  const result = await quizSessionService.startFullSimulationQuiz(req.user, testId as string, req.body);
   sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,
