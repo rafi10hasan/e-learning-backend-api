@@ -13,7 +13,7 @@ import { TFullSimulationPayload, TQuizSessionPayload } from "./quiz.session.zod"
 
 
 const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) => {
-  const { page, limit, year } = query;
+  const { page, limit, departments } = query;
 
   const pageNumber = parseInt(page as string) || 1;
   const limitNumber = parseInt(limit as string) || 10;
@@ -25,8 +25,8 @@ const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) =
   };
 
   // 2. Jodi subjects thake ebong tar moddhe elements thake, tokhon query-te add koro
-  if (year) {
-    testQuery.year = Number(year);
+  if (departments) {
+    testQuery.departments = departments;
   }
 
   const [quizzes, totalQuizzes] = await Promise.all([
@@ -61,7 +61,7 @@ const getOfficialQuizzes = async (user: IUser, query: Record<string, unknown>) =
 
 // get additional quizzes
 const getAdditionalQuizzes = async (user: IUser, query: Record<string, unknown>) => {
-  const { page, limit, year } = query;
+  const { page, limit, departments } = query;
 
   const pageNumber = parseInt(page as string) || 1;
   const limitNumber = parseInt(limit as string) || 10;
@@ -73,8 +73,8 @@ const getAdditionalQuizzes = async (user: IUser, query: Record<string, unknown>)
   };
 
   // 2. Jodi subjects thake ebong tar moddhe elements thake, tokhon query-te add koro
-  if (year) {
-    testQuery.year = Number(year);
+  if (departments) {
+    testQuery.departments = departments;
   }
 
   const [quizzes, totalQuizzes] = await Promise.all([
