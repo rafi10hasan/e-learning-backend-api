@@ -981,7 +981,7 @@ export const upsertTestAndQuestions = async ({
     const uniqueSubjectIds = [...new Set(rows.map(({ context }) => context.subject?.toString()).filter(Boolean))].map(
         (id) => new Types.ObjectId(id as string)
     );
-    console.log("rows", rows[0].isMandatory);
+
 
     const { mandatorySubjects, electiveSubjects } = deriveSubjectGroups(rows);
 
@@ -993,7 +993,6 @@ export const upsertTestAndQuestions = async ({
         )
     ].map((id) => new Types.ObjectId(id));
    
-    console.log({uniqueDepartmentIds})
 
     const createdTest =
         existingTest ??

@@ -4,7 +4,7 @@ import { uploadToCloudinary } from "../../../cloudinary/uploadImageToCLoudinary"
 import { BadRequestError, NotFoundError } from "../../../errors/request/apiError";
 import Department from "../../department/department.model";
 import Faculty from "../../faculty/faculty.model";
-import { IPassage, PassageFiles } from "../../passage/passage.interface";
+import { PassageFiles } from "../../passage/passage.interface";
 import Passage from "../../passage/passage.model";
 import Question from "../../question/question.model";
 import { QuizSession } from "../../quiz-session/quiz.session.model";
