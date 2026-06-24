@@ -803,7 +803,7 @@ const importTestsFromFile = async (
     const fileLevelInfo = validateFileLevelRules(allNormalizedRows, schemaValidRows, issues);
     const dedupedRows = dedupeRowsWithinFile(schemaValidRows, issues);
     const resolvedRows = await resolveRowContexts(dedupedRows, issues);
-    console.log({resolvedRows});
+
     const totalRows = rawRows.length;
 
     // ---- HERE: early-return when there are blocking errors ----

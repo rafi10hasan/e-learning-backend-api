@@ -4,7 +4,7 @@ import cron from 'node-cron'
 
 export const initializeQuizCrons = () => {
 
-cron.schedule('* * * * *', async () => {
+cron.schedule('*/5 * * * *', async () => {
   try {
     const now = new Date(); 
 
