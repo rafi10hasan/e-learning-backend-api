@@ -11,7 +11,5 @@
       "src": "/(.*)",
       "dest": "src/server.ts"
     }
-  ],
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["bom1","sin1"]
+  ]
 }
