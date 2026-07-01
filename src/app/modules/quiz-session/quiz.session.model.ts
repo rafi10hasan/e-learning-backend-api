@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
-import { IQuestionAttempt, IQuizSession } from "./quiz.session.interface";
 import { QUIZ_STATUS } from "./quiz.session.constant";
+import { IQuestionAttempt, IQuizSession } from "./quiz.session.interface";
 
 
 const QuestionAttemptSchema = new Schema<IQuestionAttempt>(
@@ -42,11 +42,11 @@ const QuizSessionSchema = new Schema<IQuizSession>(
       type: String,
       required: true,
     },
-    subjectIds: {
-      type: [Schema.Types.ObjectId],
+    subjectIds: [{
+      type: Schema.Types.ObjectId,
       ref: "Subject",
       required: true,
-    },
+    }],
     faculty: {
       type: Schema.Types.ObjectId,
       ref: "Faculty",

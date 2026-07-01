@@ -116,6 +116,7 @@ const getYearRange = async () => {
   const result = await Test.aggregate([
     { $group: { _id: null, maxYear: { $max: "$year" }, minYear: { $min: "$year" } } }
   ]);
+  console.log({result});
   return result[0] || { maxYear: null, minYear: null };
 };
 

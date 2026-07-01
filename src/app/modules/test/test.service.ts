@@ -306,11 +306,32 @@ const getAllAdditionalTests = async (input: {
   return getPaginatedTestsByType(TEST_TYPES.ADDITIONAL, input);
 };
 
+// get year range for all tests
 const getYearRange = async () => {
   const result = await Test.aggregate([
-    { $group: { _id: null, maxYear: { $max: "$year" }, minYear: { $min: "$year" } } }
+    {
+      $group: {
+
+        _id: {
+          year: "$year",
+          access: "$access"
+        }
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        year: "$_id.year",
+        access: "$_id.access"
+      }
+    },
+    {
+      $sort: { year: 1, access: 1 } 
+    }
   ]);
-  return result[0] || { maxYear: null, minYear: null };
+  
+  console.log(result);
+  return result;
 };
 
 

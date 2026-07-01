@@ -148,6 +148,8 @@ const getInProgressSessions = async (user: IUser) => {
         .limit(5)
         .lean();
 
+        console.log({sessions});
+
     const result = sessions.map((s) => {
         // wall clock remaining
         const expireAt = new Date(s.startedAt).getTime() + s.durationSeconds * 1000;
@@ -161,7 +163,8 @@ const getInProgressSessions = async (user: IUser) => {
         const subjectNames = (s.subjectIds as any[])
             .map((sub) => sub.name)
             .join(", ");
-        const title = `${s.examType} · ${subjectNames}`;
+        console.log(`Session ${s._id} subjects: ${subjectNames}`);
+        const title = `${s.examType}`;
 
         return {
             sessionId: s._id,
