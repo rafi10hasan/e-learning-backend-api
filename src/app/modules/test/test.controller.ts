@@ -97,7 +97,7 @@ const getQuestionsByTestIdIntoDb = asyncHandler(async (req: Request, res: Respon
 
 
 const getYearRange = asyncHandler(async (req: Request, res: Response) => {
-  const result = await testService.getYearRange();
+  const result = await testService.getYearRange(req.user.plan as string);
   sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,

@@ -307,11 +307,18 @@ const getAllAdditionalTests = async (input: {
 };
 
 // get year range for all tests
-const getYearRange = async () => {
+const getYearRange = async (plan: string) => {
+  console.log({ plan });
   const result = await Test.aggregate([
     {
-      $group: {
 
+      $match: {
+        examType: plan
+      }
+    },
+    {
+  
+      $group: {
         _id: {
           year: "$year",
           access: "$access"
@@ -319,6 +326,7 @@ const getYearRange = async () => {
       }
     },
     {
+
       $project: {
         _id: 0,
         year: "$_id.year",
@@ -326,14 +334,13 @@ const getYearRange = async () => {
       }
     },
     {
-      $sort: { year: 1, access: 1 } 
+      $sort: { year: 1, access: 1 }
     }
   ]);
-  
+
   console.log(result);
   return result;
 };
-
 
 // get Question by test id with pagination and optional department filter
 const getQuestionsByTestId = async (
