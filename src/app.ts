@@ -35,7 +35,9 @@ app.use(
       'http://localhost:3001',
       'http://localhost:3000',
       'http://localhost:3002',
-      'https://testoradashboard.vercel.app'
+      'https://testora-dashboard.vercel.app',
+      'https://testora-dashboards.vercel.app',
+      'https://testora-frontend.vercel.app/'
     ],
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   }),

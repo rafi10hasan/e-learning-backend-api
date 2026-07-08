@@ -338,7 +338,6 @@ const getYearRange = async (plan: string) => {
     }
   ]);
 
-  console.log(result);
   return result;
 };
 
@@ -661,7 +660,7 @@ const linkQuestions = async (testId: string, questionIds: string[]) => {
     throw new BadRequestError("Some questions not found or not published");
   }
 
-  const newIds = validQuestions.map((q) => q._id as Types.ObjectId);
+  const newIds = validQuestions.map((q) => q._id as Types.ObjectId);+
 
   await Question.updateMany(
     { _id: { $in: newIds } },
