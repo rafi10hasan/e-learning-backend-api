@@ -3,7 +3,7 @@ import cloudinary from "../../config/cloudinary.config";
 
 export const uploadToCloudinary = (
   file: Express.Multer.File,
-  folderName: 'profile_images' | 'question_images' | 'option_images' | 'passage_images',
+  folderName: 'profile_images' | 'question_images' | 'option_images' | 'passage_images' | 'blog_images',
 ): Promise<{ secure_url: string; public_id: string }> => {
   return new Promise(async (resolve, reject) => {
 

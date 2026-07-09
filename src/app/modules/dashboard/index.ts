@@ -5,6 +5,7 @@ import userOverviewRouter from "./overview/overview.route";
 import { adminController } from "./admin/admin.controller";
 import authMiddleware from "../../middlewares/auth.middleware";
 import { USER_ROLE } from "../user/user.constant";
+import blogRouter from "../blog/blog.route";
 
 
 const adminRouter = Router();
@@ -13,6 +14,7 @@ const adminRouter = Router();
 adminRouter.use('/questions', dashboardQuestionRouter);
 adminRouter.use('/users', userManagementRouter);
 adminRouter.use('/overview', userOverviewRouter);
+adminRouter.use('/blog', blogRouter);
 adminRouter.use('/get-me', authMiddleware(USER_ROLE.SUPER_ADMIN), adminController.getMeIntoDb);
 
 
