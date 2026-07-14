@@ -33,6 +33,7 @@ const getUserGrowthIntoDb = asyncHandler(async (req: Request, res: Response) => 
 const getStatsOverviewIntoDb = asyncHandler(async (req: Request, res: Response) => {
     const result = await overviewUserService.getStatsOverview();
     // console.log(result);
+    res.set('Cache-Control', 'no-store');
     sendResponse(res, {
         statusCode: StatusCodes.OK,
         success: true,
