@@ -54,11 +54,11 @@ const getAllBlogDetailsFromDb = asyncHandler(async (req: Request, res: Response)
 })
 
 const deleteBlogFromDb = asyncHandler(async (req: Request, res: Response) => {
-    const result = await blogService.getBlogDetails(req.params.id as string);
+    const result = await blogService.deleteBlog(req.params.id as string);
     sendResponse(res, {
         statusCode: StatusCodes.OK,
         success: true,
-        message: "Blog details retrieved successfully.",
+        message: "Blog deleted successfully.",
         data: result,
     });
 })
